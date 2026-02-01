@@ -1,6 +1,6 @@
 {
   "name": "n8n-docusign-node",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "n8n community node for DocuSign eSignature - send documents for signature and manage envelopes",
   "keywords": [
     "n8n-community-node-package",

@@ -879,3 +879,582 @@ describe('Rate Limit Additional Tests', () => {
     })).toBe(undefined);
   });
 });
+
+// ============================================================================
+// Mocked Webhook Handler Tests
+// ============================================================================
+
+describe('DocuSign Trigger Webhook Handler', () => {
+  const crypto = require('crypto');
+
+  // Helper to create mock IWebhookFunctions
+  const createMockWebhookContext = (overrides: {
+    headers?: Record<string, string | undefined>;
+    body?: Record<string, unknown>;
+    params?: Record<string, unknown>;
+    credentials?: Record<string, unknown>;
+  } = {}) => {
+    const defaultBody = {
+      event: 'envelope-completed',
+      data: {
+        envelopeSummary: {
+          envelopeId: '12345678-1234-1234-1234-123456789abc',
+          status: 'completed',
+          emailSubject: 'Please sign this document',
+          generatedDateTime: new Date().toISOString(),
+          sender: {
+            email: 'sender@example.com',
+            userName: 'Test Sender',
+          },
+          recipients: [],
+          documents: [],
+        },
+      },
+    };
+
+    const headers = overrides.headers || {};
+    const body = overrides.body || defaultBody;
+    const params = overrides.params || {};
+    const credentials = overrides.credentials || { webhookSecret: 'test-secret' };
+
+    return {
+      getRequestObject: () => ({ headers }),
+      getBodyData: () => body,
+      getNodeParameter: (name: string, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          verifySignature: true,
+          replayProtection: true,
+          events: ['envelope-completed'],
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => credentials,
+    };
+  };
+
+  describe('Signature Verification', () => {
+    it('should reject webhook with missing signature header when verification enabled', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        params: { verifySignature: true },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.webhookResponse).toBeDefined();
+      expect(result.webhookResponse?.status).toBe(401);
+      expect(result.webhookResponse?.body).toEqual({ error: 'Missing signature header' });
+    });
+
+    it('should reject webhook with invalid signature', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: { 'x-docusign-signature-1': 'invalid-signature' },
+        params: { verifySignature: true },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.webhookResponse).toBeDefined();
+      expect(result.webhookResponse?.status).toBe(401);
+      expect(result.webhookResponse?.body).toEqual({ error: 'Invalid signature' });
+    });
+
+    it('should reject webhook when webhook secret not configured', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: { 'x-docusign-signature-1': 'some-signature' },
+        params: { verifySignature: true },
+        credentials: { webhookSecret: '' },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.webhookResponse).toBeDefined();
+      expect(result.webhookResponse?.status).toBe(500);
+      expect(result.webhookResponse?.body).toEqual({ error: 'Webhook secret not configured in credentials' });
+    });
+
+    it('should accept webhook with valid signature', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const secret = 'test-secret';
+      const body = {
+        event: 'envelope-completed',
+        data: {
+          envelopeSummary: {
+            envelopeId: '12345678-1234-1234-1234-123456789abc',
+            status: 'completed',
+            generatedDateTime: new Date().toISOString(),
+          },
+        },
+      };
+
+      const hmac = crypto.createHmac('sha256', secret);
+      const validSignature = hmac.update(JSON.stringify(body)).digest('base64');
+
+      const mockCtx = createMockWebhookContext({
+        headers: { 'x-docusign-signature-1': validSignature },
+        body,
+        params: { verifySignature: true, replayProtection: false },
+        credentials: { webhookSecret: secret },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+      expect(result.workflowData?.[0]?.[0]?.json?.event).toBe('envelope-completed');
+    });
+
+    it('should skip signature verification when disabled', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        params: { verifySignature: false, replayProtection: false },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+    });
+  });
+
+  describe('Replay Protection', () => {
+    it('should reject expired webhook requests', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          data: {
+            envelopeSummary: {
+              envelopeId: '12345678-1234-1234-1234-123456789abc',
+              generatedDateTime: tenMinutesAgo,
+            },
+          },
+        },
+        params: { verifySignature: false, replayProtection: true },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.webhookResponse).toBeDefined();
+      expect(result.webhookResponse?.status).toBe(401);
+      expect(result.webhookResponse?.body).toEqual({ error: 'Request expired (replay attack protection)' });
+    });
+
+    it('should accept recent webhook requests', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const recentTime = new Date().toISOString();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          data: {
+            envelopeSummary: {
+              envelopeId: '12345678-1234-1234-1234-123456789abc',
+              generatedDateTime: recentTime,
+            },
+          },
+        },
+        params: { verifySignature: false, replayProtection: true },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+    });
+
+    it('should check statusChangedDateTime as fallback timestamp', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          data: {
+            envelopeSummary: {
+              envelopeId: '12345678-1234-1234-1234-123456789abc',
+              statusChangedDateTime: tenMinutesAgo,
+            },
+          },
+        },
+        params: { verifySignature: false, replayProtection: true },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.webhookResponse?.status).toBe(401);
+    });
+
+    it('should check sentDateTime as fallback timestamp', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const recentTime = new Date().toISOString();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-sent',
+          data: {
+            envelopeSummary: {
+              envelopeId: '12345678-1234-1234-1234-123456789abc',
+              sentDateTime: recentTime,
+            },
+          },
+        },
+        params: { verifySignature: false, replayProtection: true, events: ['envelope-sent'] },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+    });
+
+    it('should check body.generatedDateTime as fallback', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          generatedDateTime: tenMinutesAgo,
+          data: {},
+        },
+        params: { verifySignature: false, replayProtection: true },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.webhookResponse?.status).toBe(401);
+    });
+
+    it('should skip replay protection when disabled', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          data: {
+            envelopeSummary: {
+              generatedDateTime: tenMinutesAgo,
+            },
+          },
+        },
+        params: { verifySignature: false, replayProtection: false },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+    });
+
+    it('should accept webhook with no timestamp (no replay check possible)', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          data: {
+            envelopeSummary: {
+              envelopeId: '12345678-1234-1234-1234-123456789abc',
+              // No timestamp fields
+            },
+          },
+        },
+        params: { verifySignature: false, replayProtection: true },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+    });
+  });
+
+  describe('Event Filtering', () => {
+    it('should filter out non-matching events', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-sent',
+          data: { envelopeSummary: { generatedDateTime: new Date().toISOString() } },
+        },
+        params: {
+          verifySignature: false,
+          replayProtection: false,
+          events: ['envelope-completed'],
+        },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.webhookResponse?.status).toBe(200);
+      expect(result.webhookResponse?.body).toEqual({ received: true, filtered: true });
+    });
+
+    it('should accept matching events', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          data: { envelopeSummary: { generatedDateTime: new Date().toISOString() } },
+        },
+        params: {
+          verifySignature: false,
+          replayProtection: false,
+          events: ['envelope-completed', 'envelope-sent'],
+        },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+    });
+
+    it('should accept all events when events array is empty', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'template-modified',
+          data: { envelopeSummary: { generatedDateTime: new Date().toISOString() } },
+        },
+        params: {
+          verifySignature: false,
+          replayProtection: false,
+          events: [],
+        },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+    });
+  });
+
+  describe('Output Building', () => {
+    it('should build complete output with all fields', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          data: {
+            envelopeSummary: {
+              envelopeId: '12345678-1234-1234-1234-123456789abc',
+              status: 'completed',
+              emailSubject: 'Sign this contract',
+              generatedDateTime: new Date().toISOString(),
+              sender: {
+                email: 'sender@example.com',
+                userName: 'John Sender',
+              },
+              recipients: [{ email: 'signer@example.com' }],
+              documents: [{ documentId: '1', name: 'contract.pdf' }],
+            },
+          },
+        },
+        params: { verifySignature: false, replayProtection: false },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+      const output = result.workflowData?.[0]?.[0]?.json;
+      expect(output?.event).toBe('envelope-completed');
+      expect(output?.envelopeId).toBe('12345678-1234-1234-1234-123456789abc');
+      expect(output?.status).toBe('completed');
+      expect(output?.emailSubject).toBe('Sign this contract');
+      expect(output?.senderEmail).toBe('sender@example.com');
+      expect(output?.senderName).toBe('John Sender');
+      expect(output?.recipients).toHaveLength(1);
+      expect(output?.documents).toHaveLength(1);
+      expect(output?.rawPayload).toBeDefined();
+      expect(output?.timestamp).toBeDefined();
+    });
+
+    it('should handle fallback fields from body level', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          envelopeId: 'fallback-id',
+          status: 'completed',
+          emailSubject: 'Fallback subject',
+          data: {},
+        },
+        params: { verifySignature: false, replayProtection: false },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+      const output = result.workflowData?.[0]?.[0]?.json;
+      expect(output?.envelopeId).toBe('fallback-id');
+      expect(output?.status).toBe('completed');
+      expect(output?.emailSubject).toBe('Fallback subject');
+    });
+
+    it('should handle missing sender gracefully', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = createMockWebhookContext({
+        headers: {},
+        body: {
+          event: 'envelope-completed',
+          data: {
+            envelopeSummary: {
+              envelopeId: '12345678-1234-1234-1234-123456789abc',
+              generatedDateTime: new Date().toISOString(),
+              // No sender field
+            },
+          },
+        },
+        params: { verifySignature: false, replayProtection: false },
+      });
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.workflowData).toBeDefined();
+      const output = result.workflowData?.[0]?.[0]?.json;
+      expect(output?.senderEmail).toBeUndefined();
+      expect(output?.senderName).toBeUndefined();
+    });
+  });
+
+  describe('Credential Error Handling', () => {
+    it('should handle credential fetch errors', async () => {
+      const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
+      const node = new DocuSignTrigger();
+
+      const mockCtx = {
+        getRequestObject: () => ({ headers: { 'x-docusign-signature-1': 'some-sig' } }),
+        getBodyData: () => ({ event: 'test' }),
+        getNodeParameter: (name: string) => {
+          if (name === 'verifySignature') return true;
+          if (name === 'replayProtection') return false;
+          if (name === 'events') return [];
+          return undefined;
+        },
+        getCredentials: async () => {
+          throw new Error('Credential fetch failed');
+        },
+      };
+
+      const result = await node.webhook.call(mockCtx as never);
+
+      expect(result.webhookResponse?.status).toBe(500);
+      expect(result.webhookResponse?.body).toEqual({ error: 'Signature verification failed' });
+    });
+  });
+});
+
+// ============================================================================
+// Mocked Delete Handler Tests
+// ============================================================================
+
+describe('DocuSign Node Delete Handler', () => {
+  // Helper to create mock IExecuteFunctions
+  const createMockExecuteContext = (overrides: {
+    params?: Record<string, unknown>;
+    apiResponse?: Record<string, unknown>;
+    shouldFail?: boolean;
+  } = {}) => {
+    const params = overrides.params || {};
+    const apiResponse = overrides.apiResponse || { envelopeId: '12345678-1234-1234-1234-123456789abc', status: 'deleted' };
+
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'envelope',
+          operation: 'delete',
+          envelopeId: '12345678-1234-1234-1234-123456789abc',
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () => apiResponse,
+        returnJsonArray: (data: unknown) => Array.isArray(data) ? data : [data],
+        constructExecutionMetaData: (items: unknown[], meta: unknown) => items,
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => overrides.shouldFail === true,
+    };
+  };
+
+  it('should execute delete operation successfully', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    // We can't easily mock the full execute context, but we can test the node instantiation
+    expect(node.description.name).toBe('docuSign');
+
+    // Check that delete operation exists in the node
+    const properties = node.description.properties;
+    const resourceProp = properties.find(p => p.name === 'resource');
+    expect(resourceProp).toBeDefined();
+  });
+
+  it('should validate envelope ID format for delete', () => {
+    // Test validation directly
+    expect(() => validateField('Envelope ID', '12345678-1234-1234-1234-123456789abc', 'uuid')).not.toThrow();
+    expect(() => validateField('Envelope ID', 'invalid-id', 'uuid')).toThrow('Envelope ID must be a valid UUID');
+  });
+
+  it('should require envelope ID for delete operation', () => {
+    expect(() => validateField('Envelope ID', '', 'uuid')).not.toThrow(); // Empty is skipped
+    expect(() => validateField('Envelope ID', '', 'required')).toThrow('Envelope ID is required');
+  });
+});

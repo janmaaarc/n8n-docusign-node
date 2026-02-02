@@ -9,8 +9,11 @@ An [n8n](https://n8n.io/) community node for [DocuSign](https://www.docusign.com
 
 ## Features
 
-- **Full Envelope Management** - Create, send, void, and download documents
+- **Full Envelope Management** - Create, send, void, delete, and download documents
+- **Embedded Signing** - Generate signing URLs for iframe integration in your app
 - **Multiple Signers & Documents** - Support for multiple signers with routing order and multiple documents per envelope
+- **Advanced Tab Types** - Signature, initials, date, text fields, checkboxes, and more
+- **Custom Fields** - Add metadata fields to envelopes for tracking and reporting
 - **Template Support** - Create envelopes from pre-configured templates
 - **Webhook Trigger** - Real-time event notifications via DocuSign Connect
 - **Regional Support** - NA, EU, AU, and CA regions for production environments
@@ -18,7 +21,19 @@ An [n8n](https://n8n.io/) community node for [DocuSign](https://www.docusign.com
 - **Input Validation** - RFC 5322 compliant email validation, secure URL validation (blocks internal networks)
 - **Token Caching** - Efficient JWT token caching with automatic refresh
 - **Type Safety** - Full TypeScript support with comprehensive type definitions
-- **Security Hardened** - HMAC-SHA256 webhook signature verification
+- **Security Hardened** - HMAC-SHA256 webhook signature verification, replay attack protection
+
+## Requirements
+
+### DocuSign Plan Requirements
+
+| Environment | Plan Required |
+|-------------|---------------|
+| Development/Testing | Free Developer Account |
+| Production | Business Pro or higher |
+| Webhooks (DocuSign Connect) | Business Pro+ or Connect add-on |
+
+Start with a free [DocuSign Developer Account](https://developers.docusign.com/) to test before committing to a paid plan.
 
 ## Installation
 
@@ -40,7 +55,7 @@ npm install n8n-docusign-node
 To use this node, you need DocuSign API credentials:
 
 1. Log in to your [DocuSign Admin](https://admin.docusign.com/)
-2. Go to **Settings** → **Apps and Keys**
+2. Go to **Settings** > **Apps and Keys**
 3. Create an **Integration Key** (Client ID)
 4. Generate an **RSA Key Pair** and save the private key
 5. Note your **User ID** and **Account ID**
@@ -69,8 +84,19 @@ The main node for interacting with the DocuSign eSignature API.
 
 | Resource | Operations |
 |----------|------------|
-| **Envelope** | Create, Create From Template, Get, Get Many, Send, Resend, Void, Delete, Download Document, Get Recipients, Update Recipients, Get Audit Events |
+| **Envelope** | Create, Create From Template, Get, Get Many, Send, Resend, Void, Delete, Download Document, List Documents, Get Recipients, Update Recipients, Get Audit Events, Create Signing URL |
 | **Template** | Get, Get Many |
+
+#### Envelope Create Options
+
+| Option | Description |
+|--------|-------------|
+| **Multiple Signers** | Add additional signers with routing order |
+| **Multiple Documents** | Attach multiple documents to one envelope |
+| **Embedded Signing** | Enable for iframe integration (adds clientUserId) |
+| **Custom Fields** | Add metadata fields for tracking |
+| **Additional Tabs** | Initial, date, text, checkbox, company, title fields |
+| **Anchor Tags** | Position signature fields using text anchors |
 
 ### DocuSign Trigger
 
@@ -97,7 +123,7 @@ Webhook trigger node for receiving real-time events via DocuSign Connect.
 ### 1. Send Contract for Signature
 
 ```
-HTTP Request (Get Contract) → DocuSign (Create Envelope) → Slack (Notify Team)
+HTTP Request (Get Contract) > DocuSign (Create Envelope) > Slack (Notify Team)
 ```
 
 Send a document for signature and notify your team.
@@ -105,7 +131,7 @@ Send a document for signature and notify your team.
 ### 2. Signed Document to Cloud Storage
 
 ```
-DocuSign Trigger (envelope-completed) → DocuSign (Download Document) → Google Drive (Upload)
+DocuSign Trigger (envelope-completed) > DocuSign (Download Document) > Google Drive (Upload)
 ```
 
 Automatically save signed documents to cloud storage.
@@ -113,7 +139,7 @@ Automatically save signed documents to cloud storage.
 ### 3. Multi-Party Agreement
 
 ```
-Form Trigger → DocuSign (Create Envelope with Multiple Signers) → Wait for Completion
+Form Trigger > DocuSign (Create Envelope with Multiple Signers) > Wait for Completion
 ```
 
 Create envelopes with multiple signers using routing order.
@@ -121,15 +147,23 @@ Create envelopes with multiple signers using routing order.
 ### 4. Template-Based Onboarding
 
 ```
-New Employee (Webhook) → DocuSign (Create From Template) → HR System (Update)
+New Employee (Webhook) > DocuSign (Create From Template) > HR System (Update)
 ```
 
 Use templates for standardized documents like onboarding forms.
 
-### 5. Envelope Status Dashboard
+### 5. Embedded Signing in Your App
 
 ```
-Schedule Trigger → DocuSign (Get Many, status=sent) → Google Sheets (Update)
+Form Trigger > DocuSign (Create Envelope, Embedded=true) > DocuSign (Create Signing URL) > Redirect User
+```
+
+Generate signing URLs for embedding DocuSign in your application.
+
+### 6. Envelope Status Dashboard
+
+```
+Schedule Trigger > DocuSign (Get Many, status=sent) > Google Sheets (Update)
 ```
 
 Track pending envelopes and update a dashboard.
@@ -276,12 +310,23 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Changelog
 
+### v0.2.0
+
+**New Features:**
+- Embedded signing URL generation (Create Signing URL operation)
+- List Documents operation
+- Custom fields support for envelope metadata
+- Additional tab types: Initial, Date Signed, Text, Checkbox, Full Name, Email, Company, Title
+- Embedded signing option in Create Envelope (adds clientUserId)
+- Requirements section with DocuSign plan information
+
 ### v0.1.0
 
 **New Features:**
 - Replay attack protection for webhooks (rejects requests older than 5 minutes)
 - Delete operation for draft envelopes
 - CI/CD pipeline with GitHub Actions
+- Mocked webhook handler tests for 100% trigger coverage
 
 ### v0.0.4
 

@@ -87,6 +87,18 @@ export const envelopeOperations: INodeProperties = {
       action: 'Delete an envelope',
       description: 'Delete a draft envelope (only works for drafts)',
     },
+    {
+      name: 'Create Signing URL',
+      value: 'createRecipientView',
+      action: 'Create embedded signing URL',
+      description: 'Generate a URL for embedded signing in your app',
+    },
+    {
+      name: 'List Documents',
+      value: 'listDocuments',
+      action: 'List documents',
+      description: 'Get the list of documents in an envelope',
+    },
   ],
   default: 'create',
 };
@@ -337,6 +349,157 @@ export const envelopeFields: INodeProperties[] = [
           },
         ],
       },
+      {
+        displayName: 'Custom Fields',
+        name: 'customFields',
+        type: 'fixedCollection',
+        typeOptions: {
+          multipleValues: true,
+        },
+        default: {},
+        description: 'Add custom metadata fields to the envelope',
+        options: [
+          {
+            name: 'textFields',
+            displayName: 'Text Field',
+            values: [
+              {
+                displayName: 'Field ID',
+                name: 'fieldId',
+                type: 'string',
+                default: '',
+                required: true,
+                description: 'Unique identifier for the custom field',
+              },
+              {
+                displayName: 'Name',
+                name: 'name',
+                type: 'string',
+                default: '',
+                required: true,
+                description: 'Name of the custom field',
+              },
+              {
+                displayName: 'Value',
+                name: 'value',
+                type: 'string',
+                default: '',
+                description: 'Value for the custom field',
+              },
+              {
+                displayName: 'Show In Email',
+                name: 'show',
+                type: 'boolean',
+                default: false,
+                description: 'Whether to show this field in email notifications',
+              },
+              {
+                displayName: 'Required',
+                name: 'required',
+                type: 'boolean',
+                default: false,
+                description: 'Whether this field is required',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        displayName: 'Embedded Signing',
+        name: 'embeddedSigning',
+        type: 'boolean',
+        default: false,
+        description: 'Whether to enable embedded signing (adds clientUserId to signer for later recipient view generation)',
+      },
+      {
+        displayName: 'Client User ID',
+        name: 'embeddedClientUserId',
+        type: 'string',
+        default: '',
+        displayOptions: {
+          show: {
+            embeddedSigning: [true],
+          },
+        },
+        description: 'A unique identifier for embedded signing. Required for createRecipientView.',
+      },
+      {
+        displayName: 'Additional Tabs',
+        name: 'additionalTabs',
+        type: 'fixedCollection',
+        typeOptions: {
+          multipleValues: true,
+        },
+        default: {},
+        description: 'Add additional form fields (tabs) for the signer',
+        options: [
+          {
+            name: 'tabs',
+            displayName: 'Tab',
+            values: [
+              {
+                displayName: 'Tab Type',
+                name: 'tabType',
+                type: 'options',
+                options: [
+                  { name: 'Initial Here', value: 'initialHereTabs', description: 'Initials field' },
+                  { name: 'Date Signed', value: 'dateSignedTabs', description: 'Auto-populated date field' },
+                  { name: 'Text Field', value: 'textTabs', description: 'Free-text input field' },
+                  { name: 'Checkbox', value: 'checkboxTabs', description: 'Checkbox field' },
+                  { name: 'Full Name', value: 'fullNameTabs', description: 'Auto-filled full name' },
+                  { name: 'Email', value: 'emailTabs', description: 'Auto-filled email address' },
+                  { name: 'Company', value: 'companyTabs', description: 'Company name field' },
+                  { name: 'Title', value: 'titleTabs', description: 'Job title field' },
+                ],
+                default: 'initialHereTabs',
+                description: 'Type of form field to add',
+              },
+              {
+                displayName: 'Document ID',
+                name: 'documentId',
+                type: 'string',
+                default: '1',
+                description: 'ID of the document to place this tab on',
+              },
+              {
+                displayName: 'Page Number',
+                name: 'pageNumber',
+                type: 'number',
+                default: 1,
+                description: 'Page number for this tab',
+              },
+              {
+                displayName: 'X Position',
+                name: 'xPosition',
+                type: 'number',
+                default: 100,
+                description: 'X coordinate for tab placement (pixels from left)',
+              },
+              {
+                displayName: 'Y Position',
+                name: 'yPosition',
+                type: 'number',
+                default: 150,
+                description: 'Y coordinate for tab placement (pixels from top)',
+              },
+              {
+                displayName: 'Tab Label',
+                name: 'tabLabel',
+                type: 'string',
+                default: '',
+                description: 'Label for the tab (used for identification)',
+              },
+              {
+                displayName: 'Required',
+                name: 'required',
+                type: 'boolean',
+                default: false,
+                description: 'Whether this field is required',
+              },
+            ],
+          },
+        ],
+      },
     ],
   },
 
@@ -428,7 +591,7 @@ export const envelopeFields: INodeProperties[] = [
     displayOptions: {
       show: {
         resource: ['envelope'],
-        operation: ['get', 'send', 'void', 'downloadDocument', 'resend', 'getRecipients', 'updateRecipients', 'getAuditEvents', 'delete'],
+        operation: ['get', 'send', 'void', 'downloadDocument', 'resend', 'getRecipients', 'updateRecipients', 'getAuditEvents', 'delete', 'createRecipientView', 'listDocuments'],
       },
     },
     default: '',
@@ -631,5 +794,108 @@ export const envelopeFields: INodeProperties[] = [
         description: 'New name for the recipient',
       },
     ],
+  },
+
+  // ==========================================================================
+  // Create Recipient View (Embedded Signing) Fields
+  // ==========================================================================
+  {
+    displayName: 'Signer Email',
+    name: 'signerEmail',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['envelope'],
+        operation: ['createRecipientView'],
+      },
+    },
+    default: '',
+    placeholder: 'signer@example.com',
+    description: 'Email address of the signer (must match a recipient in the envelope)',
+  },
+  {
+    displayName: 'Signer Name',
+    name: 'signerName',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['envelope'],
+        operation: ['createRecipientView'],
+      },
+    },
+    default: '',
+    placeholder: 'John Doe',
+    description: 'Name of the signer (must match a recipient in the envelope)',
+  },
+  {
+    displayName: 'Return URL',
+    name: 'returnUrl',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['envelope'],
+        operation: ['createRecipientView'],
+      },
+    },
+    default: '',
+    placeholder: 'https://yourapp.com/signing-complete',
+    description: 'URL to redirect the signer to after signing is complete',
+  },
+  {
+    displayName: 'Authentication Method',
+    name: 'authenticationMethod',
+    type: 'options',
+    displayOptions: {
+      show: {
+        resource: ['envelope'],
+        operation: ['createRecipientView'],
+      },
+    },
+    options: [
+      {
+        name: 'None',
+        value: 'None',
+        description: 'No authentication required',
+      },
+      {
+        name: 'Email',
+        value: 'Email',
+        description: 'Signer must verify email',
+      },
+      {
+        name: 'Password',
+        value: 'Password',
+        description: 'Signer must enter a password',
+      },
+      {
+        name: 'Phone',
+        value: 'Phone',
+        description: 'Signer must verify via phone',
+      },
+      {
+        name: 'ID Check',
+        value: 'IDCheck',
+        description: 'Signer must pass ID verification',
+      },
+    ],
+    default: 'None',
+    description: 'Method used to authenticate the signer',
+  },
+  {
+    displayName: 'Client User ID',
+    name: 'clientUserId',
+    type: 'string',
+    displayOptions: {
+      show: {
+        resource: ['envelope'],
+        operation: ['createRecipientView'],
+      },
+    },
+    default: '',
+    placeholder: 'user-123',
+    description: 'A unique identifier for this embedded signing session. If empty, generates one automatically.',
   },
 ];

@@ -108,6 +108,34 @@ const document = buildDocument(base64Content, '1', 'contract.pdf', 'pdf');
 const signHereTab = buildSignHereTab('1', '1', { xPosition: '100', yPosition: '100' });
 ```
 
+### Embedded Signing URL
+
+```typescript
+// Create recipient view for embedded signing
+const body = {
+  email: signerEmail,
+  userName: signerName,
+  returnUrl: 'https://yourapp.com/complete',
+  authenticationMethod: 'None',
+  clientUserId: 'unique-user-id',
+};
+const response = await docuSignApiRequest.call(
+  ctx, 'POST', `/envelopes/${envelopeId}/views/recipient`, body
+);
+// Returns { url: 'https://docusign.com/signing-url...' }
+```
+
+### Custom Fields
+
+```typescript
+// Add custom metadata fields to envelope
+envelope.customFields = {
+  textCustomFields: [
+    { fieldId: '1', name: 'OrderNumber', value: 'ORD-123', show: 'true' },
+  ],
+};
+```
+
 ## Available Commands
 
 ```bash

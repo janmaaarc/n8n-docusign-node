@@ -68,6 +68,13 @@ async function handleEnvelopeCreate(
   // Build primary signer with signature tab
   const signer = buildSigner(signerEmail, signerName, '1', '1');
 
+  // Add clientUserId for embedded signing if enabled
+  if (additionalOptions.embeddedSigning) {
+    const clientUserId = (additionalOptions.embeddedClientUserId as string) ||
+      `embedded-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    signer.clientUserId = clientUserId;
+  }
+
   // Add signature tab
   const signaturePage = (additionalOptions.signaturePage as number) || 1;
   let signHereTab: IDataObject;
@@ -85,9 +92,39 @@ async function handleEnvelopeCreate(
     });
   }
 
-  signer.tabs = {
+  // Initialize tabs with signHere
+  const signerTabs: IDataObject = {
     signHereTabs: [signHereTab],
   };
+
+  // Add additional tabs if specified
+  const additionalTabsData = additionalOptions.additionalTabs as IDataObject | undefined;
+  if (additionalTabsData?.tabs) {
+    const tabsList = additionalTabsData.tabs as IDataObject[];
+    for (const tab of tabsList) {
+      const tabType = tab.tabType as string;
+      const tabObj: IDataObject = {
+        documentId: (tab.documentId as string) || '1',
+        pageNumber: String(tab.pageNumber || 1),
+        xPosition: String(tab.xPosition || 100),
+        yPosition: String(tab.yPosition || 150),
+      };
+
+      if (tab.tabLabel) {
+        tabObj.tabLabel = tab.tabLabel as string;
+      }
+      if (tab.required) {
+        tabObj.required = 'true';
+      }
+
+      if (!signerTabs[tabType]) {
+        signerTabs[tabType] = [];
+      }
+      (signerTabs[tabType] as IDataObject[]).push(tabObj);
+    }
+  }
+
+  signer.tabs = signerTabs;
 
   // Build primary document with proper file extension extraction
   const fileExtension = getFileExtension(documentName);
@@ -172,6 +209,27 @@ async function handleEnvelopeCreate(
 
   if (additionalOptions.emailBlurb) {
     envelope.emailBlurb = additionalOptions.emailBlurb;
+  }
+
+  // Add custom fields if specified
+  const customFieldsData = additionalOptions.customFields as IDataObject | undefined;
+  if (customFieldsData?.textFields) {
+    const textFieldsList = customFieldsData.textFields as IDataObject[];
+    const textCustomFields: IDataObject[] = [];
+
+    for (const field of textFieldsList) {
+      textCustomFields.push({
+        fieldId: field.fieldId as string,
+        name: field.name as string,
+        value: (field.value as string) || '',
+        show: field.show ? 'true' : 'false',
+        required: field.required ? 'true' : 'false',
+      });
+    }
+
+    envelope.customFields = {
+      textCustomFields,
+    };
   }
 
   return await docuSignApiRequest.call(ctx, 'POST', '/envelopes', envelope);
@@ -470,6 +528,63 @@ async function handleEnvelopeDelete(
   );
 }
 
+/**
+ * Handles creating an embedded signing URL (recipient view).
+ * Returns a URL that can be used in an iframe or redirect for signing.
+ */
+async function handleEnvelopeCreateRecipientView(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+  const signerEmail = ctx.getNodeParameter('signerEmail', itemIndex) as string;
+  const signerName = ctx.getNodeParameter('signerName', itemIndex) as string;
+  const returnUrl = ctx.getNodeParameter('returnUrl', itemIndex) as string;
+  const authenticationMethod = ctx.getNodeParameter('authenticationMethod', itemIndex, 'None') as string;
+  const clientUserId = ctx.getNodeParameter('clientUserId', itemIndex, '') as string;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+  validateField('Signer Email', signerEmail, 'email');
+  validateField('Signer Name', signerName, 'required');
+  validateField('Return URL', returnUrl, 'url');
+
+  const body: IDataObject = {
+    email: signerEmail,
+    userName: signerName,
+    returnUrl,
+    authenticationMethod,
+  };
+
+  // clientUserId is required for embedded signing
+  if (clientUserId) {
+    body.clientUserId = clientUserId;
+  } else {
+    // Generate a unique client user ID if not provided
+    body.clientUserId = `embedded-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+  }
+
+  return await docuSignApiRequest.call(
+    ctx,
+    'POST',
+    `/envelopes/${envelopeId}/views/recipient`,
+    body,
+  );
+}
+
+/**
+ * Handles listing documents in an envelope.
+ */
+async function handleEnvelopeListDocuments(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'GET', `/envelopes/${envelopeId}/documents`);
+}
+
 // ============================================================================
 // Template Handlers
 // ============================================================================
@@ -628,6 +743,14 @@ export class DocuSign implements INodeType {
 
             case 'delete':
               responseData = await handleEnvelopeDelete(this, i);
+              break;
+
+            case 'createRecipientView':
+              responseData = await handleEnvelopeCreateRecipientView(this, i);
+              break;
+
+            case 'listDocuments':
+              responseData = await handleEnvelopeListDocuments(this, i);
               break;
 
             default:

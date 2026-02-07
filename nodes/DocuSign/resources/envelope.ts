@@ -99,6 +99,12 @@ export const envelopeOperations: INodeProperties = {
       action: 'List documents',
       description: 'Get the list of documents in an envelope',
     },
+    {
+      name: 'Correct',
+      value: 'correct',
+      action: 'Correct an envelope',
+      description: 'Generate a correction URL for a sent envelope',
+    },
   ],
   default: 'create',
 };
@@ -167,8 +173,7 @@ export const envelopeFields: INodeProperties[] = [
       },
     },
     default: '',
-    description:
-      'Binary property name containing the document to send, or a base64-encoded string',
+    description: 'Binary property name containing the document to send, or a base64-encoded string',
   },
   {
     displayName: 'Document Name',
@@ -254,6 +259,68 @@ export const envelopeFields: INodeProperties[] = [
         type: 'boolean',
         default: false,
         description: 'Whether signers can only see fields assigned to them',
+      },
+      {
+        displayName: 'Send Reminders',
+        name: 'reminderEnabled',
+        type: 'boolean',
+        default: false,
+        description: 'Whether to send automatic reminders to recipients',
+      },
+      {
+        displayName: 'Reminder Delay (Days)',
+        name: 'reminderDelay',
+        type: 'number',
+        default: 2,
+        description: 'Number of days after sending before the first reminder',
+        displayOptions: {
+          show: {
+            reminderEnabled: [true],
+          },
+        },
+      },
+      {
+        displayName: 'Reminder Frequency (Days)',
+        name: 'reminderFrequency',
+        type: 'number',
+        default: 1,
+        description: 'Number of days between subsequent reminders',
+        displayOptions: {
+          show: {
+            reminderEnabled: [true],
+          },
+        },
+      },
+      {
+        displayName: 'Set Expiration',
+        name: 'expireEnabled',
+        type: 'boolean',
+        default: false,
+        description: 'Whether to set an expiration date on the envelope',
+      },
+      {
+        displayName: 'Expire After (Days)',
+        name: 'expireAfter',
+        type: 'number',
+        default: 120,
+        description: 'Number of days until the envelope expires',
+        displayOptions: {
+          show: {
+            expireEnabled: [true],
+          },
+        },
+      },
+      {
+        displayName: 'Expiration Warning (Days)',
+        name: 'expireWarn',
+        type: 'number',
+        default: 3,
+        description: 'Number of days before expiration to warn recipients',
+        displayOptions: {
+          show: {
+            expireEnabled: [true],
+          },
+        },
       },
       {
         displayName: 'Carbon Copy Email',
@@ -444,7 +511,8 @@ export const envelopeFields: INodeProperties[] = [
         name: 'embeddedSigning',
         type: 'boolean',
         default: false,
-        description: 'Whether to enable embedded signing (adds clientUserId to signer for later recipient view generation)',
+        description:
+          'Whether to enable embedded signing (adds clientUserId to signer for later recipient view generation)',
       },
       {
         displayName: 'Client User ID',
@@ -459,6 +527,70 @@ export const envelopeFields: INodeProperties[] = [
         description: 'A unique identifier for embedded signing. Required for createRecipientView.',
       },
       {
+        displayName: 'Signer Authentication',
+        name: 'signerAuthentication',
+        type: 'fixedCollection',
+        default: {},
+        description: 'Add authentication requirements for the primary signer',
+        options: [
+          {
+            name: 'auth',
+            displayName: 'Authentication',
+            values: [
+              {
+                displayName: 'Method',
+                name: 'authMethod',
+                type: 'options',
+                options: [
+                  { name: 'None', value: 'none', description: 'No additional authentication' },
+                  {
+                    name: 'Access Code',
+                    value: 'accessCode',
+                    description: 'Signer must enter a code to access the document',
+                  },
+                  {
+                    name: 'Phone',
+                    value: 'phone',
+                    description: 'Signer must verify via phone call',
+                  },
+                  { name: 'SMS', value: 'sms', description: 'Signer must verify via SMS code' },
+                ],
+                default: 'none',
+                description: 'Authentication method required before signing',
+              },
+              {
+                displayName: 'Access Code',
+                name: 'accessCode',
+                type: 'string',
+                typeOptions: {
+                  password: true,
+                },
+                default: '',
+                description: 'The code the signer must enter to access the document',
+                displayOptions: {
+                  show: {
+                    authMethod: ['accessCode'],
+                  },
+                },
+              },
+              {
+                displayName: 'Phone Number',
+                name: 'phoneNumber',
+                type: 'string',
+                default: '',
+                placeholder: '+1-555-123-4567',
+                description: 'Phone number for verification',
+                displayOptions: {
+                  show: {
+                    authMethod: ['phone', 'sms'],
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
         displayName: 'Merge Fields',
         name: 'mergeFields',
         type: 'fixedCollection',
@@ -466,7 +598,8 @@ export const envelopeFields: INodeProperties[] = [
           multipleValues: true,
         },
         default: {},
-        description: 'Populate document placeholders with dynamic values. Put placeholders like {{FirstName}} in your document, then map them to values here.',
+        description:
+          'Populate document placeholders with dynamic values. Put placeholders like {{FirstName}} in your document, then map them to values here.',
         options: [
           {
             name: 'fields',
@@ -479,7 +612,8 @@ export const envelopeFields: INodeProperties[] = [
                 default: '',
                 required: true,
                 placeholder: '{{FirstName}}',
-                description: 'The placeholder text in your document (e.g., {{FirstName}}, {{Company}})',
+                description:
+                  'The placeholder text in your document (e.g., {{FirstName}}, {{Company}})',
               },
               {
                 displayName: 'Value',
@@ -539,13 +673,42 @@ export const envelopeFields: INodeProperties[] = [
                 type: 'options',
                 options: [
                   { name: 'Initial Here', value: 'initialHereTabs', description: 'Initials field' },
-                  { name: 'Date Signed', value: 'dateSignedTabs', description: 'Auto-populated date field' },
+                  {
+                    name: 'Date Signed',
+                    value: 'dateSignedTabs',
+                    description: 'Auto-populated date field',
+                  },
                   { name: 'Text Field', value: 'textTabs', description: 'Free-text input field' },
                   { name: 'Checkbox', value: 'checkboxTabs', description: 'Checkbox field' },
-                  { name: 'Full Name', value: 'fullNameTabs', description: 'Auto-filled full name' },
+                  {
+                    name: 'Full Name',
+                    value: 'fullNameTabs',
+                    description: 'Auto-filled full name',
+                  },
                   { name: 'Email', value: 'emailTabs', description: 'Auto-filled email address' },
                   { name: 'Company', value: 'companyTabs', description: 'Company name field' },
                   { name: 'Title', value: 'titleTabs', description: 'Job title field' },
+                  {
+                    name: 'Radio Group',
+                    value: 'radioGroupTabs',
+                    description: 'Radio button group',
+                  },
+                  {
+                    name: 'Dropdown/List',
+                    value: 'listTabs',
+                    description: 'Dropdown list selection',
+                  },
+                  { name: 'Number', value: 'numberTabs', description: 'Number input field' },
+                  {
+                    name: 'Formula',
+                    value: 'formulaTabs',
+                    description: 'Calculated formula field',
+                  },
+                  {
+                    name: 'Signer Attachment',
+                    value: 'signerAttachmentTabs',
+                    description: 'Let signer upload an attachment',
+                  },
                 ],
                 default: 'initialHereTabs',
                 description: 'Type of form field to add',
@@ -591,6 +754,58 @@ export const envelopeFields: INodeProperties[] = [
                 type: 'boolean',
                 default: false,
                 description: 'Whether this field is required',
+              },
+              {
+                displayName: 'Radio Options',
+                name: 'radioItems',
+                type: 'string',
+                default: '',
+                placeholder: 'Yes,No,Maybe',
+                description: 'Comma-separated radio button options',
+                displayOptions: {
+                  show: {
+                    tabType: ['radioGroupTabs'],
+                  },
+                },
+              },
+              {
+                displayName: 'Group Name',
+                name: 'groupName',
+                type: 'string',
+                default: '',
+                placeholder: 'myRadioGroup',
+                description: 'Name for the radio button group (required)',
+                displayOptions: {
+                  show: {
+                    tabType: ['radioGroupTabs'],
+                  },
+                },
+              },
+              {
+                displayName: 'List Items',
+                name: 'listItems',
+                type: 'string',
+                default: '',
+                placeholder: 'Option A,Option B,Option C',
+                description: 'Comma-separated list of dropdown options',
+                displayOptions: {
+                  show: {
+                    tabType: ['listTabs'],
+                  },
+                },
+              },
+              {
+                displayName: 'Formula',
+                name: 'formula',
+                type: 'string',
+                default: '',
+                placeholder: '[quantity] * [price]',
+                description: 'Formula expression using tab labels in square brackets',
+                displayOptions: {
+                  show: {
+                    tabType: ['formulaTabs'],
+                  },
+                },
               },
             ],
           },
@@ -675,6 +890,94 @@ export const envelopeFields: INodeProperties[] = [
     placeholder: 'John Doe',
     description: 'Full name of the recipient',
   },
+  {
+    displayName: 'Additional Options',
+    name: 'additionalOptions',
+    type: 'collection',
+    placeholder: 'Add Option',
+    default: {},
+    displayOptions: {
+      show: {
+        resource: ['envelope'],
+        operation: ['createFromTemplate'],
+      },
+    },
+    options: [
+      {
+        displayName: 'Email Message',
+        name: 'emailBlurb',
+        type: 'string',
+        default: '',
+        description: 'Email body text sent to recipients',
+        typeOptions: {
+          rows: 3,
+        },
+      },
+      {
+        displayName: 'Merge Fields',
+        name: 'mergeFields',
+        type: 'fixedCollection',
+        typeOptions: {
+          multipleValues: true,
+        },
+        default: {},
+        description:
+          'Populate document placeholders with dynamic values. Put placeholders like {{FirstName}} in your template document, then map them to values here.',
+        options: [
+          {
+            name: 'fields',
+            displayName: 'Field',
+            values: [
+              {
+                displayName: 'Placeholder',
+                name: 'placeholder',
+                type: 'string',
+                default: '',
+                required: true,
+                placeholder: '{{FirstName}}',
+                description:
+                  'The placeholder text in your document (e.g., {{FirstName}}, {{Company}})',
+              },
+              {
+                displayName: 'Value',
+                name: 'value',
+                type: 'string',
+                default: '',
+                required: true,
+                description: 'The value to populate in place of the placeholder',
+              },
+              {
+                displayName: 'Font Size',
+                name: 'fontSize',
+                type: 'options',
+                options: [
+                  { name: 'Size 7', value: 'Size7' },
+                  { name: 'Size 8', value: 'Size8' },
+                  { name: 'Size 9', value: 'Size9' },
+                  { name: 'Size 10', value: 'Size10' },
+                  { name: 'Size 11', value: 'Size11' },
+                  { name: 'Size 12 (Default)', value: 'Size12' },
+                  { name: 'Size 14', value: 'Size14' },
+                  { name: 'Size 16', value: 'Size16' },
+                  { name: 'Size 18', value: 'Size18' },
+                  { name: 'Size 20', value: 'Size20' },
+                  { name: 'Size 22', value: 'Size22' },
+                  { name: 'Size 24', value: 'Size24' },
+                  { name: 'Size 26', value: 'Size26' },
+                  { name: 'Size 28', value: 'Size28' },
+                  { name: 'Size 36', value: 'Size36' },
+                  { name: 'Size 48', value: 'Size48' },
+                  { name: 'Size 72', value: 'Size72' },
+                ],
+                default: 'Size12',
+                description: 'Font size for the populated text',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
 
   // ==========================================================================
   // Get Operation Fields
@@ -687,7 +990,20 @@ export const envelopeFields: INodeProperties[] = [
     displayOptions: {
       show: {
         resource: ['envelope'],
-        operation: ['get', 'send', 'void', 'downloadDocument', 'resend', 'getRecipients', 'updateRecipients', 'getAuditEvents', 'delete', 'createRecipientView', 'listDocuments'],
+        operation: [
+          'get',
+          'send',
+          'void',
+          'downloadDocument',
+          'resend',
+          'getRecipients',
+          'updateRecipients',
+          'getAuditEvents',
+          'delete',
+          'createRecipientView',
+          'listDocuments',
+          'correct',
+        ],
       },
     },
     default: '',
@@ -992,6 +1308,26 @@ export const envelopeFields: INodeProperties[] = [
     },
     default: '',
     placeholder: 'user-123',
-    description: 'A unique identifier for this embedded signing session. If empty, generates one automatically.',
+    description:
+      'A unique identifier for this embedded signing session. If empty, generates one automatically.',
+  },
+
+  // ==========================================================================
+  // Correct Operation Fields
+  // ==========================================================================
+  {
+    displayName: 'Return URL',
+    name: 'returnUrl',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['envelope'],
+        operation: ['correct'],
+      },
+    },
+    default: '',
+    placeholder: 'https://yourapp.com/correction-complete',
+    description: 'URL to redirect to after correction is complete',
   },
 ];

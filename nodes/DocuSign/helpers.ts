@@ -10,12 +10,7 @@
  * @module helpers
  */
 
-import type {
-  IExecuteFunctions,
-  IDataObject,
-  JsonObject,
-  IHttpRequestMethods,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, JsonObject, IHttpRequestMethods } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import * as crypto from 'crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -129,10 +124,22 @@ export function isValidUrl(url: string, requireHttps: boolean = false): boolean 
       '::1',
       '[::1]',
       '10.',
-      '172.16.', '172.17.', '172.18.', '172.19.',
-      '172.20.', '172.21.', '172.22.', '172.23.',
-      '172.24.', '172.25.', '172.26.', '172.27.',
-      '172.28.', '172.29.', '172.30.', '172.31.',
+      '172.16.',
+      '172.17.',
+      '172.18.',
+      '172.19.',
+      '172.20.',
+      '172.21.',
+      '172.22.',
+      '172.23.',
+      '172.24.',
+      '172.25.',
+      '172.26.',
+      '172.27.',
+      '172.28.',
+      '172.29.',
+      '172.30.',
+      '172.31.',
       '192.168.',
       '169.254.',
     ];
@@ -193,7 +200,9 @@ export function validateField(
       break;
     case 'uuid':
       if (typeof value !== 'string' || !isValidUUID(value)) {
-        throw new Error(`${fieldName} must be a valid UUID (e.g., 12345678-1234-1234-1234-123456789abc)`);
+        throw new Error(
+          `${fieldName} must be a valid UUID (e.g., 12345678-1234-1234-1234-123456789abc)`,
+        );
       }
       break;
     case 'base64':
@@ -314,7 +323,6 @@ export function getRetryAfterSeconds(error: unknown): number | undefined {
   return undefined;
 }
 
-
 // ============================================================================
 // API Request Helpers
 // ============================================================================
@@ -428,9 +436,11 @@ function getErrorMessage(error: unknown): string {
     // For generic messages, limit length to avoid leaking sensitive data
     if (err.message) {
       // Filter out any message that might contain token or key data
-      if (err.message.toLowerCase().includes('token') ||
-          err.message.toLowerCase().includes('key') ||
-          err.message.toLowerCase().includes('secret')) {
+      if (
+        err.message.toLowerCase().includes('token') ||
+        err.message.toLowerCase().includes('key') ||
+        err.message.toLowerCase().includes('secret')
+      ) {
         return 'Authentication failed. Please check your credentials.';
       }
       return err.message.substring(0, 200);
@@ -513,7 +523,8 @@ export async function docuSignApiRequest(
       lastError = error;
 
       // Don't retry on client errors (4xx except 429)
-      const statusCode = (error as { statusCode?: number }).statusCode ||
+      const statusCode =
+        (error as { statusCode?: number }).statusCode ||
         (error as { response?: { statusCode?: number } }).response?.statusCode;
       if (statusCode && statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
         break;
@@ -739,11 +750,7 @@ export function buildSignHereTab(
  * @param roleName - The role name defined in the template
  * @returns Template role object
  */
-export function buildTemplateRole(
-  email: string,
-  name: string,
-  roleName: string,
-): IDataObject {
+export function buildTemplateRole(email: string, name: string, roleName: string): IDataObject {
   validateField('Recipient email', email, 'email');
   validateField('Recipient name', name, 'required');
   validateField('Role name', roleName, 'required');

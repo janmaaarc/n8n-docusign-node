@@ -174,11 +174,15 @@ describe('Validation Helpers', () => {
 
     it('should validate email fields', () => {
       expect(() => validateField('email', 'user@example.com', 'email')).not.toThrow();
-      expect(() => validateField('email', 'invalid', 'email')).toThrow('email must be a valid email address');
+      expect(() => validateField('email', 'invalid', 'email')).toThrow(
+        'email must be a valid email address',
+      );
     });
 
     it('should validate UUID fields', () => {
-      expect(() => validateField('id', '12345678-1234-1234-1234-123456789abc', 'uuid')).not.toThrow();
+      expect(() =>
+        validateField('id', '12345678-1234-1234-1234-123456789abc', 'uuid'),
+      ).not.toThrow();
       expect(() => validateField('id', 'invalid', 'uuid')).toThrow('id must be a valid UUID');
     });
 
@@ -187,7 +191,6 @@ describe('Validation Helpers', () => {
       expect(() => validateField('id', undefined, 'uuid')).not.toThrow();
     });
   });
-
 });
 
 // ============================================================================
@@ -245,9 +248,11 @@ describe('Rate Limiting Helpers', () => {
 
   describe('getRetryAfterSeconds', () => {
     it('should extract Retry-After header value', () => {
-      expect(getRetryAfterSeconds({
-        response: { headers: { 'retry-after': '60' } }
-      })).toBe(60);
+      expect(
+        getRetryAfterSeconds({
+          response: { headers: { 'retry-after': '60' } },
+        }),
+      ).toBe(60);
     });
 
     it('should return undefined when no header present', () => {
@@ -551,7 +556,7 @@ describe('DocuSign Trigger Node', () => {
   it('should have events property', async () => {
     const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
     const node = new DocuSignTrigger();
-    const eventsProperty = node.description.properties.find(p => p.name === 'events');
+    const eventsProperty = node.description.properties.find((p) => p.name === 'events');
     expect(eventsProperty).toBeDefined();
     expect(eventsProperty?.type).toBe('multiOptions');
   });
@@ -559,7 +564,7 @@ describe('DocuSign Trigger Node', () => {
   it('should have verifySignature property', async () => {
     const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
     const node = new DocuSignTrigger();
-    const verifyProperty = node.description.properties.find(p => p.name === 'verifySignature');
+    const verifyProperty = node.description.properties.find((p) => p.name === 'verifySignature');
     expect(verifyProperty).toBeDefined();
     expect(verifyProperty?.type).toBe('boolean');
     expect(verifyProperty?.default).toBe(true);
@@ -568,7 +573,7 @@ describe('DocuSign Trigger Node', () => {
   it('should have replayProtection property', async () => {
     const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
     const node = new DocuSignTrigger();
-    const replayProperty = node.description.properties.find(p => p.name === 'replayProtection');
+    const replayProperty = node.description.properties.find((p) => p.name === 'replayProtection');
     expect(replayProperty).toBeDefined();
     expect(replayProperty?.type).toBe('boolean');
     expect(replayProperty?.default).toBe(true);
@@ -577,9 +582,9 @@ describe('DocuSign Trigger Node', () => {
   it('should support all envelope events', async () => {
     const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
     const node = new DocuSignTrigger();
-    const eventsProperty = node.description.properties.find(p => p.name === 'events');
+    const eventsProperty = node.description.properties.find((p) => p.name === 'events');
     const options = eventsProperty?.options as Array<{ value: string }>;
-    const eventValues = options?.map(o => o.value) || [];
+    const eventValues = options?.map((o) => o.value) || [];
 
     expect(eventValues).toContain('envelope-sent');
     expect(eventValues).toContain('envelope-delivered');
@@ -591,9 +596,9 @@ describe('DocuSign Trigger Node', () => {
   it('should support all recipient events', async () => {
     const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
     const node = new DocuSignTrigger();
-    const eventsProperty = node.description.properties.find(p => p.name === 'events');
+    const eventsProperty = node.description.properties.find((p) => p.name === 'events');
     const options = eventsProperty?.options as Array<{ value: string }>;
-    const eventValues = options?.map(o => o.value) || [];
+    const eventValues = options?.map((o) => o.value) || [];
 
     expect(eventValues).toContain('recipient-sent');
     expect(eventValues).toContain('recipient-delivered');
@@ -605,9 +610,9 @@ describe('DocuSign Trigger Node', () => {
   it('should support template events', async () => {
     const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
     const node = new DocuSignTrigger();
-    const eventsProperty = node.description.properties.find(p => p.name === 'events');
+    const eventsProperty = node.description.properties.find((p) => p.name === 'events');
     const options = eventsProperty?.options as Array<{ value: string }>;
-    const eventValues = options?.map(o => o.value) || [];
+    const eventValues = options?.map((o) => o.value) || [];
 
     expect(eventValues).toContain('template-created');
     expect(eventValues).toContain('template-modified');
@@ -622,7 +627,9 @@ describe('DocuSign Trigger Node', () => {
 describe('validateField edge cases', () => {
   it('should validate base64 fields', () => {
     expect(() => validateField('content', 'SGVsbG8=', 'base64')).not.toThrow();
-    expect(() => validateField('content', 'not valid!!!', 'base64')).toThrow('content must be valid base64-encoded content');
+    expect(() => validateField('content', 'not valid!!!', 'base64')).toThrow(
+      'content must be valid base64-encoded content',
+    );
   });
 
   it('should validate url fields', () => {
@@ -632,12 +639,16 @@ describe('validateField edge cases', () => {
 
   it('should validate httpsUrl fields', () => {
     expect(() => validateField('url', 'https://example.com', 'httpsUrl')).not.toThrow();
-    expect(() => validateField('url', 'http://example.com', 'httpsUrl')).toThrow('url must be a valid HTTPS URL');
+    expect(() => validateField('url', 'http://example.com', 'httpsUrl')).toThrow(
+      'url must be a valid HTTPS URL',
+    );
   });
 
   it('should validate date fields', () => {
     expect(() => validateField('date', '2024-01-15', 'date')).not.toThrow();
-    expect(() => validateField('date', 'not-a-date', 'date')).toThrow('date must be a valid ISO 8601 date');
+    expect(() => validateField('date', 'not-a-date', 'date')).toThrow(
+      'date must be a valid ISO 8601 date',
+    );
   });
 
   it('should skip validation for null values', () => {
@@ -654,7 +665,7 @@ describe('Envelope Resource', () => {
   it('should have all operations defined', async () => {
     const { envelopeOperations } = await import('../nodes/DocuSign/resources/envelope');
     const options = envelopeOperations.options as Array<{ value: string }>;
-    const operationValues = options.map(o => o.value);
+    const operationValues = options.map((o) => o.value);
 
     expect(operationValues).toContain('create');
     expect(operationValues).toContain('createFromTemplate');
@@ -673,7 +684,7 @@ describe('Envelope Resource', () => {
   it('should have delete operation', async () => {
     const { envelopeOperations } = await import('../nodes/DocuSign/resources/envelope');
     const options = envelopeOperations.options as Array<{ value: string; name: string }>;
-    const deleteOp = options.find(o => o.value === 'delete');
+    const deleteOp = options.find((o) => o.value === 'delete');
 
     expect(deleteOp).toBeDefined();
     expect(deleteOp?.name).toBe('Delete');
@@ -683,7 +694,7 @@ describe('Envelope Resource', () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
     expect(envelopeFields.length).toBeGreaterThan(0);
 
-    const fieldNames = envelopeFields.map(f => f.name);
+    const fieldNames = envelopeFields.map((f) => f.name);
     expect(fieldNames).toContain('emailSubject');
     expect(fieldNames).toContain('signerEmail');
     expect(fieldNames).toContain('envelopeId');
@@ -691,11 +702,11 @@ describe('Envelope Resource', () => {
 
   it('should have envelope-level options in additionalOptions', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     expect(additionalOptions).toBeDefined();
 
     const options = additionalOptions?.options as Array<{ name: string }>;
-    const optionNames = options?.map(o => o.name);
+    const optionNames = options?.map((o) => o.name);
 
     expect(optionNames).toContain('allowMarkup');
     expect(optionNames).toContain('allowReassign');
@@ -713,7 +724,7 @@ describe('Template Resource', () => {
   it('should have all operations defined', async () => {
     const { templateOperations } = await import('../nodes/DocuSign/resources/template');
     const options = templateOperations.options as Array<{ value: string }>;
-    const operationValues = options.map(o => o.value);
+    const operationValues = options.map((o) => o.value);
 
     expect(operationValues).toContain('get');
     expect(operationValues).toContain('getAll');
@@ -723,7 +734,7 @@ describe('Template Resource', () => {
     const { templateFields } = await import('../nodes/DocuSign/resources/template');
     expect(templateFields.length).toBeGreaterThan(0);
 
-    const fieldNames = templateFields.map(f => f.name);
+    const fieldNames = templateFields.map((f) => f.name);
     expect(fieldNames).toContain('templateId');
     expect(fieldNames).toContain('returnAll');
     expect(fieldNames).toContain('limit');
@@ -843,7 +854,7 @@ describe('Rate Limit Additional Tests', () => {
   it('should handle x-ratelimit-reset header', () => {
     const futureTime = Math.floor(Date.now() / 1000) + 60;
     const result = getRetryAfterSeconds({
-      response: { headers: { 'x-ratelimit-reset': String(futureTime) } }
+      response: { headers: { 'x-ratelimit-reset': String(futureTime) } },
     });
     expect(result).toBeGreaterThan(0);
     expect(result).toBeLessThanOrEqual(60);
@@ -852,19 +863,23 @@ describe('Rate Limit Additional Tests', () => {
   it('should return undefined for past reset time', () => {
     const pastTime = Math.floor(Date.now() / 1000) - 60;
     const result = getRetryAfterSeconds({
-      response: { headers: { 'x-ratelimit-reset': String(pastTime) } }
+      response: { headers: { 'x-ratelimit-reset': String(pastTime) } },
     });
     expect(result).toBe(undefined);
   });
 
   it('should return undefined for invalid retry-after values', () => {
-    expect(getRetryAfterSeconds({
-      response: { headers: { 'retry-after': 'invalid' } }
-    })).toBe(undefined);
+    expect(
+      getRetryAfterSeconds({
+        response: { headers: { 'retry-after': 'invalid' } },
+      }),
+    ).toBe(undefined);
 
-    expect(getRetryAfterSeconds({
-      response: { headers: { 'retry-after': '-5' } }
-    })).toBe(undefined);
+    expect(
+      getRetryAfterSeconds({
+        response: { headers: { 'retry-after': '-5' } },
+      }),
+    ).toBe(undefined);
   });
 });
 
@@ -876,12 +891,14 @@ describe('DocuSign Trigger Webhook Handler', () => {
   const crypto = require('crypto');
 
   // Helper to create mock IWebhookFunctions
-  const createMockWebhookContext = (overrides: {
-    headers?: Record<string, string | undefined>;
-    body?: Record<string, unknown>;
-    params?: Record<string, unknown>;
-    credentials?: Record<string, unknown>;
-  } = {}) => {
+  const createMockWebhookContext = (
+    overrides: {
+      headers?: Record<string, string | undefined>;
+      body?: Record<string, unknown>;
+      params?: Record<string, unknown>;
+      credentials?: Record<string, unknown>;
+    } = {},
+  ) => {
     const defaultBody = {
       event: 'envelope-completed',
       data: {
@@ -968,7 +985,9 @@ describe('DocuSign Trigger Webhook Handler', () => {
 
       expect(result.webhookResponse).toBeDefined();
       expect(result.webhookResponse?.status).toBe(500);
-      expect(result.webhookResponse?.body).toEqual({ error: 'Webhook secret not configured in credentials' });
+      expect(result.webhookResponse?.body).toEqual({
+        error: 'Webhook secret not configured in credentials',
+      });
     });
 
     it('should accept webhook with valid signature', async () => {
@@ -1043,7 +1062,9 @@ describe('DocuSign Trigger Webhook Handler', () => {
 
       expect(result.webhookResponse).toBeDefined();
       expect(result.webhookResponse?.status).toBe(401);
-      expect(result.webhookResponse?.body).toEqual({ error: 'Request expired (replay attack protection)' });
+      expect(result.webhookResponse?.body).toEqual({
+        error: 'Request expired (replay attack protection)',
+      });
     });
 
     it('should accept recent webhook requests', async () => {
@@ -1388,13 +1409,18 @@ describe('DocuSign Trigger Webhook Handler', () => {
 
 describe('DocuSign Node Delete Handler', () => {
   // Helper to create mock IExecuteFunctions
-  const createMockExecuteContext = (overrides: {
-    params?: Record<string, unknown>;
-    apiResponse?: Record<string, unknown>;
-    shouldFail?: boolean;
-  } = {}) => {
+  const createMockExecuteContext = (
+    overrides: {
+      params?: Record<string, unknown>;
+      apiResponse?: Record<string, unknown>;
+      shouldFail?: boolean;
+    } = {},
+  ) => {
     const params = overrides.params || {};
-    const apiResponse = overrides.apiResponse || { envelopeId: '12345678-1234-1234-1234-123456789abc', status: 'deleted' };
+    const apiResponse = overrides.apiResponse || {
+      envelopeId: '12345678-1234-1234-1234-123456789abc',
+      status: 'deleted',
+    };
 
     return {
       getInputData: () => [{ json: {} }],
@@ -1414,7 +1440,7 @@ describe('DocuSign Node Delete Handler', () => {
       }),
       helpers: {
         httpRequestWithAuthentication: async () => apiResponse,
-        returnJsonArray: (data: unknown) => Array.isArray(data) ? data : [data],
+        returnJsonArray: (data: unknown) => (Array.isArray(data) ? data : [data]),
         constructExecutionMetaData: (items: unknown[], meta: unknown) => items,
       },
       getNode: () => ({ name: 'DocuSign' }),
@@ -1431,14 +1457,18 @@ describe('DocuSign Node Delete Handler', () => {
 
     // Check that delete operation exists in the node
     const properties = node.description.properties;
-    const resourceProp = properties.find(p => p.name === 'resource');
+    const resourceProp = properties.find((p) => p.name === 'resource');
     expect(resourceProp).toBeDefined();
   });
 
   it('should validate envelope ID format for delete', () => {
     // Test validation directly
-    expect(() => validateField('Envelope ID', '12345678-1234-1234-1234-123456789abc', 'uuid')).not.toThrow();
-    expect(() => validateField('Envelope ID', 'invalid-id', 'uuid')).toThrow('Envelope ID must be a valid UUID');
+    expect(() =>
+      validateField('Envelope ID', '12345678-1234-1234-1234-123456789abc', 'uuid'),
+    ).not.toThrow();
+    expect(() => validateField('Envelope ID', 'invalid-id', 'uuid')).toThrow(
+      'Envelope ID must be a valid UUID',
+    );
   });
 
   it('should require envelope ID for delete operation', () => {
@@ -1455,32 +1485,38 @@ describe('Merge Fields Feature', () => {
   it('should have merge fields option in envelope create additionalOptions', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     expect(additionalOptions).toBeDefined();
 
     const options = additionalOptions?.options as Array<{ name: string }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
     expect(mergeFieldsOption).toBeDefined();
   });
 
   it('should have correct merge fields structure', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
-    const options = additionalOptions?.options as Array<{ name: string; type?: string; options?: unknown[] }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
+    const options = additionalOptions?.options as Array<{
+      name: string;
+      type?: string;
+      options?: unknown[];
+    }>;
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
 
     expect(mergeFieldsOption?.type).toBe('fixedCollection');
 
     // Check that merge fields has the fields array with placeholder and value
-    const innerOptions = (mergeFieldsOption as { options?: Array<{ name: string; values?: Array<{ name: string }> }> })?.options;
-    const fieldsOption = innerOptions?.find(o => o.name === 'fields');
+    const innerOptions = (
+      mergeFieldsOption as { options?: Array<{ name: string; values?: Array<{ name: string }> }> }
+    )?.options;
+    const fieldsOption = innerOptions?.find((o) => o.name === 'fields');
     expect(fieldsOption).toBeDefined();
 
     const values = fieldsOption?.values;
-    const placeholderField = values?.find(v => v.name === 'placeholder');
-    const valueField = values?.find(v => v.name === 'value');
-    const fontSizeField = values?.find(v => v.name === 'fontSize');
+    const placeholderField = values?.find((v) => v.name === 'placeholder');
+    const valueField = values?.find((v) => v.name === 'value');
+    const fontSizeField = values?.find((v) => v.name === 'fontSize');
 
     expect(placeholderField).toBeDefined();
     expect(valueField).toBeDefined();
@@ -1490,20 +1526,27 @@ describe('Merge Fields Feature', () => {
   it('should have font size options', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string; options?: unknown[] }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
 
-    const innerOptions = (mergeFieldsOption as { options?: Array<{ name: string; values?: Array<{ name: string; options?: Array<{ value: string }> }> }> })?.options;
-    const fieldsOption = innerOptions?.find(o => o.name === 'fields');
+    const innerOptions = (
+      mergeFieldsOption as {
+        options?: Array<{
+          name: string;
+          values?: Array<{ name: string; options?: Array<{ value: string }> }>;
+        }>;
+      }
+    )?.options;
+    const fieldsOption = innerOptions?.find((o) => o.name === 'fields');
     const values = fieldsOption?.values;
-    const fontSizeField = values?.find(v => v.name === 'fontSize');
+    const fontSizeField = values?.find((v) => v.name === 'fontSize');
 
     const fontOptions = (fontSizeField as { options?: Array<{ value: string }> })?.options;
     expect(fontOptions).toBeDefined();
     expect(fontOptions?.length).toBeGreaterThan(0);
 
-    const fontValues = fontOptions?.map(o => o.value);
+    const fontValues = fontOptions?.map((o) => o.value);
     expect(fontValues).toContain('Size12');
     expect(fontValues).toContain('Size14');
     expect(fontValues).toContain('Size7');
@@ -1518,14 +1561,14 @@ describe('Envelope Options', () => {
   it('should have correct default values for envelope options', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string; default?: unknown }>;
 
-    const allowMarkup = options?.find(o => o.name === 'allowMarkup');
-    const allowReassign = options?.find(o => o.name === 'allowReassign');
-    const brandId = options?.find(o => o.name === 'brandId');
-    const enableWetSign = options?.find(o => o.name === 'enableWetSign');
-    const enforceSignerVisibility = options?.find(o => o.name === 'enforceSignerVisibility');
+    const allowMarkup = options?.find((o) => o.name === 'allowMarkup');
+    const allowReassign = options?.find((o) => o.name === 'allowReassign');
+    const brandId = options?.find((o) => o.name === 'brandId');
+    const enableWetSign = options?.find((o) => o.name === 'enableWetSign');
+    const enforceSignerVisibility = options?.find((o) => o.name === 'enforceSignerVisibility');
 
     expect(allowMarkup?.default).toBe(false);
     expect(allowReassign?.default).toBe(true);
@@ -1537,14 +1580,14 @@ describe('Envelope Options', () => {
   it('should have correct types for envelope options', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string; type?: string }>;
 
-    const allowMarkup = options?.find(o => o.name === 'allowMarkup');
-    const allowReassign = options?.find(o => o.name === 'allowReassign');
-    const brandId = options?.find(o => o.name === 'brandId');
-    const enableWetSign = options?.find(o => o.name === 'enableWetSign');
-    const enforceSignerVisibility = options?.find(o => o.name === 'enforceSignerVisibility');
+    const allowMarkup = options?.find((o) => o.name === 'allowMarkup');
+    const allowReassign = options?.find((o) => o.name === 'allowReassign');
+    const brandId = options?.find((o) => o.name === 'brandId');
+    const enableWetSign = options?.find((o) => o.name === 'enableWetSign');
+    const enforceSignerVisibility = options?.find((o) => o.name === 'enforceSignerVisibility');
 
     expect(allowMarkup?.type).toBe('boolean');
     expect(allowReassign?.type).toBe('boolean');
@@ -1556,13 +1599,19 @@ describe('Envelope Options', () => {
   it('should have descriptions for all envelope options', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string; description?: string }>;
 
-    const optionNames = ['allowMarkup', 'allowReassign', 'brandId', 'enableWetSign', 'enforceSignerVisibility'];
+    const optionNames = [
+      'allowMarkup',
+      'allowReassign',
+      'brandId',
+      'enableWetSign',
+      'enforceSignerVisibility',
+    ];
 
     for (const name of optionNames) {
-      const option = options?.find(o => o.name === name);
+      const option = options?.find((o) => o.name === name);
       expect(option?.description).toBeDefined();
       expect(option?.description?.length).toBeGreaterThan(10);
     }
@@ -1577,14 +1626,18 @@ describe('Merge Fields Edge Cases', () => {
   it('should have placeholder field marked as required', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
 
-    const innerOptions = (mergeFieldsOption as { options?: Array<{ name: string; values?: Array<{ name: string; required?: boolean }> }> })?.options;
-    const fieldsOption = innerOptions?.find(o => o.name === 'fields');
+    const innerOptions = (
+      mergeFieldsOption as {
+        options?: Array<{ name: string; values?: Array<{ name: string; required?: boolean }> }>;
+      }
+    )?.options;
+    const fieldsOption = innerOptions?.find((o) => o.name === 'fields');
     const values = fieldsOption?.values;
-    const placeholderField = values?.find(v => v.name === 'placeholder');
+    const placeholderField = values?.find((v) => v.name === 'placeholder');
 
     expect(placeholderField?.required).toBe(true);
   });
@@ -1592,14 +1645,18 @@ describe('Merge Fields Edge Cases', () => {
   it('should have value field marked as required', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
 
-    const innerOptions = (mergeFieldsOption as { options?: Array<{ name: string; values?: Array<{ name: string; required?: boolean }> }> })?.options;
-    const fieldsOption = innerOptions?.find(o => o.name === 'fields');
+    const innerOptions = (
+      mergeFieldsOption as {
+        options?: Array<{ name: string; values?: Array<{ name: string; required?: boolean }> }>;
+      }
+    )?.options;
+    const fieldsOption = innerOptions?.find((o) => o.name === 'fields');
     const values = fieldsOption?.values;
-    const valueField = values?.find(v => v.name === 'value');
+    const valueField = values?.find((v) => v.name === 'value');
 
     expect(valueField?.required).toBe(true);
   });
@@ -1607,14 +1664,18 @@ describe('Merge Fields Edge Cases', () => {
   it('should have default font size of Size12', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
 
-    const innerOptions = (mergeFieldsOption as { options?: Array<{ name: string; values?: Array<{ name: string; default?: string }> }> })?.options;
-    const fieldsOption = innerOptions?.find(o => o.name === 'fields');
+    const innerOptions = (
+      mergeFieldsOption as {
+        options?: Array<{ name: string; values?: Array<{ name: string; default?: string }> }>;
+      }
+    )?.options;
+    const fieldsOption = innerOptions?.find((o) => o.name === 'fields');
     const values = fieldsOption?.values;
-    const fontSizeField = values?.find(v => v.name === 'fontSize');
+    const fontSizeField = values?.find((v) => v.name === 'fontSize');
 
     expect(fontSizeField?.default).toBe('Size12');
   });
@@ -1622,14 +1683,18 @@ describe('Merge Fields Edge Cases', () => {
   it('should have placeholder example in placeholder field', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
 
-    const innerOptions = (mergeFieldsOption as { options?: Array<{ name: string; values?: Array<{ name: string; placeholder?: string }> }> })?.options;
-    const fieldsOption = innerOptions?.find(o => o.name === 'fields');
+    const innerOptions = (
+      mergeFieldsOption as {
+        options?: Array<{ name: string; values?: Array<{ name: string; placeholder?: string }> }>;
+      }
+    )?.options;
+    const fieldsOption = innerOptions?.find((o) => o.name === 'fields');
     const values = fieldsOption?.values;
-    const placeholderField = values?.find(v => v.name === 'placeholder');
+    const placeholderField = values?.find((v) => v.name === 'placeholder');
 
     expect(placeholderField?.placeholder).toBe('{{FirstName}}');
   });
@@ -1637,9 +1702,12 @@ describe('Merge Fields Edge Cases', () => {
   it('should support multiple values in merge fields', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
-    const options = additionalOptions?.options as Array<{ name: string; typeOptions?: { multipleValues?: boolean } }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
+    const options = additionalOptions?.options as Array<{
+      name: string;
+      typeOptions?: { multipleValues?: boolean };
+    }>;
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
 
     expect(mergeFieldsOption?.typeOptions?.multipleValues).toBe(true);
   });
@@ -1647,17 +1715,24 @@ describe('Merge Fields Edge Cases', () => {
   it('should have all font size options from Size7 to Size72', async () => {
     const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
 
-    const additionalOptions = envelopeFields.find(f => f.name === 'additionalOptions');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
     const options = additionalOptions?.options as Array<{ name: string }>;
-    const mergeFieldsOption = options?.find(o => o.name === 'mergeFields');
+    const mergeFieldsOption = options?.find((o) => o.name === 'mergeFields');
 
-    const innerOptions = (mergeFieldsOption as { options?: Array<{ name: string; values?: Array<{ name: string; options?: Array<{ value: string }> }> }> })?.options;
-    const fieldsOption = innerOptions?.find(o => o.name === 'fields');
+    const innerOptions = (
+      mergeFieldsOption as {
+        options?: Array<{
+          name: string;
+          values?: Array<{ name: string; options?: Array<{ value: string }> }>;
+        }>;
+      }
+    )?.options;
+    const fieldsOption = innerOptions?.find((o) => o.name === 'fields');
     const values = fieldsOption?.values;
-    const fontSizeField = values?.find(v => v.name === 'fontSize');
+    const fontSizeField = values?.find((v) => v.name === 'fontSize');
 
     const fontOptions = (fontSizeField as { options?: Array<{ value: string }> })?.options;
-    const fontValues = fontOptions?.map(o => o.value) || [];
+    const fontValues = fontOptions?.map((o) => o.value) || [];
 
     // Check boundary values
     expect(fontValues).toContain('Size7');
@@ -1684,16 +1759,18 @@ describe('DocuSign Node Execute', () => {
   /**
    * Creates a mock IExecuteFunctions context for testing the execute method.
    */
-  const createExecuteContext = (overrides: {
-    resource?: string;
-    operation?: string;
-    params?: Record<string, unknown>;
-    items?: Array<{ json: Record<string, unknown>; binary?: Record<string, { data: string }> }>;
-    apiResponse?: unknown;
-    apiResponses?: unknown[];
-    shouldFail?: boolean;
-    httpError?: Error;
-  } = {}) => {
+  const createExecuteContext = (
+    overrides: {
+      resource?: string;
+      operation?: string;
+      params?: Record<string, unknown>;
+      items?: Array<{ json: Record<string, unknown>; binary?: Record<string, { data: string }> }>;
+      apiResponse?: unknown;
+      apiResponses?: unknown[];
+      shouldFail?: boolean;
+      httpError?: Error;
+    } = {},
+  ) => {
     const resource = overrides.resource || 'envelope';
     const operation = overrides.operation || 'get';
     const params = overrides.params || {};
@@ -1980,9 +2057,7 @@ describe('DocuSign Node Execute', () => {
         operation: 'listDocuments',
         params: { envelopeId: VALID_UUID },
         apiResponse: {
-          envelopeDocuments: [
-            { documentId: '1', name: 'contract.pdf' },
-          ],
+          envelopeDocuments: [{ documentId: '1', name: 'contract.pdf' }],
         },
       });
 
@@ -2023,10 +2098,12 @@ describe('DocuSign Node Execute', () => {
       const ctx = createExecuteContext({
         resource: 'envelope',
         operation: 'create',
-        items: [{
-          json: {},
-          binary: { data: { data: 'SGVsbG8gV29ybGQ=' } },
-        }],
+        items: [
+          {
+            json: {},
+            binary: { data: { data: 'SGVsbG8gV29ybGQ=' } },
+          },
+        ],
         params: {
           emailSubject: 'Sign document',
           signerEmail: 'signer@example.com',
@@ -2114,14 +2191,10 @@ describe('DocuSign Node Execute', () => {
             ccName: 'CC Person',
             emailBlurb: 'Please review and sign',
             additionalSigners: {
-              signers: [
-                { email: 'signer2@example.com', name: 'Signer Two', routingOrder: 2 },
-              ],
+              signers: [{ email: 'signer2@example.com', name: 'Signer Two', routingOrder: 2 }],
             },
             additionalDocuments: {
-              documents: [
-                { document: 'SGVsbG8gV29ybGQ=', documentName: 'appendix.pdf' },
-              ],
+              documents: [{ document: 'SGVsbG8gV29ybGQ=', documentName: 'appendix.pdf' }],
             },
           },
         },
@@ -2149,8 +2222,22 @@ describe('DocuSign Node Execute', () => {
           additionalOptions: {
             additionalTabs: {
               tabs: [
-                { tabType: 'initialHereTabs', documentId: '1', pageNumber: 1, xPosition: 100, yPosition: 200, tabLabel: 'init', required: true },
-                { tabType: 'dateSignedTabs', documentId: '1', pageNumber: 1, xPosition: 100, yPosition: 300 },
+                {
+                  tabType: 'initialHereTabs',
+                  documentId: '1',
+                  pageNumber: 1,
+                  xPosition: 100,
+                  yPosition: 200,
+                  tabLabel: 'init',
+                  required: true,
+                },
+                {
+                  tabType: 'dateSignedTabs',
+                  documentId: '1',
+                  pageNumber: 1,
+                  xPosition: 100,
+                  yPosition: 300,
+                },
               ],
             },
           },
@@ -2209,7 +2296,13 @@ describe('DocuSign Node Execute', () => {
           additionalOptions: {
             customFields: {
               textFields: [
-                { fieldId: '1', name: 'OrderNumber', value: 'ORD-123', show: true, required: false },
+                {
+                  fieldId: '1',
+                  name: 'OrderNumber',
+                  value: 'ORD-123',
+                  show: true,
+                  required: false,
+                },
               ],
             },
           },
@@ -2271,6 +2364,60 @@ describe('DocuSign Node Execute', () => {
 
       const result = await node.execute.call(ctx as never);
       expect(result[0][0].json.status).toBe('sent');
+    });
+
+    it('should create an envelope from template with merge fields', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createExecuteContext({
+        resource: 'envelope',
+        operation: 'createFromTemplate',
+        params: {
+          templateId: VALID_UUID,
+          emailSubject: 'Template with merge fields',
+          roleName: 'Signer',
+          recipientEmail: 'signer@example.com',
+          recipientName: 'John Doe',
+          additionalOptions: {
+            mergeFields: {
+              fields: [
+                { placeholder: '{{FirstName}}', value: 'John', fontSize: 'Size12' },
+                { placeholder: '{{Company}}', value: 'Acme Inc' },
+              ],
+            },
+          },
+        },
+        apiResponse: { envelopeId: VALID_UUID, status: 'sent' },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0][0].json.status).toBe('sent');
+    });
+
+    it('should create an envelope from template with email blurb', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createExecuteContext({
+        resource: 'envelope',
+        operation: 'createFromTemplate',
+        params: {
+          templateId: VALID_UUID,
+          emailSubject: 'Template with blurb',
+          roleName: 'Signer',
+          recipientEmail: 'signer@example.com',
+          recipientName: 'John Doe',
+          additionalOptions: {
+            emailBlurb: 'Please review and sign this document.',
+          },
+        },
+        apiResponse: { envelopeId: VALID_UUID, status: 'sent' },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
     });
   });
 
@@ -2374,9 +2521,7 @@ describe('DocuSign Node Execute', () => {
           filters: {},
         },
         apiResponse: {
-          envelopeTemplates: [
-            { templateId: 'tmpl-1', name: 'Template 1' },
-          ],
+          envelopeTemplates: [{ templateId: 'tmpl-1', name: 'Template 1' }],
         },
       });
 
@@ -2472,11 +2617,588 @@ describe('DocuSign Node Execute', () => {
 // Credential Tests (JWT & Token Caching)
 // ============================================================================
 
+// ============================================================================
+// Phase 2: Reminders, Expiration, Auth, New Tabs, Correct
+// ============================================================================
+
+describe('Envelope: reminders and expiration', () => {
+  const VALID_UUID = '12345678-1234-1234-1234-123456789012';
+
+  const createExecuteContext2 = (params: Record<string, unknown>, apiResponse?: unknown) => {
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'envelope',
+          operation: 'create',
+          envelopeId: VALID_UUID,
+          templateId: VALID_UUID,
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          apiResponse || { envelopeId: VALID_UUID, status: 'sent' },
+        returnJsonArray: (data: unknown) => {
+          if (Array.isArray(data)) {
+            return data.map((item: unknown) => ({ json: item }));
+          }
+          return [{ json: data }];
+        },
+        constructExecutionMetaData: (items: unknown[]) => items,
+        prepareBinaryData: async (buffer: Buffer, fileName: string, mimeType: string) => ({
+          data: buffer.toString('base64'),
+          fileName,
+          mimeType,
+        }),
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  it('should create an envelope with reminders enabled', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Reminder test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        reminderEnabled: true,
+        reminderDelay: 3,
+        reminderFrequency: 2,
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create an envelope with expiration enabled', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Expiration test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        expireEnabled: true,
+        expireAfter: 90,
+        expireWarn: 5,
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create an envelope with both reminders and expiration', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Both notification test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        reminderEnabled: true,
+        reminderDelay: 2,
+        reminderFrequency: 1,
+        expireEnabled: true,
+        expireAfter: 120,
+        expireWarn: 3,
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+});
+
+describe('Envelope: signer authentication', () => {
+  const VALID_UUID = '12345678-1234-1234-1234-123456789012';
+
+  const createExecuteContext2 = (params: Record<string, unknown>, apiResponse?: unknown) => {
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'envelope',
+          operation: 'create',
+          envelopeId: VALID_UUID,
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          apiResponse || { envelopeId: VALID_UUID, status: 'sent' },
+        returnJsonArray: (data: unknown) => {
+          if (Array.isArray(data)) {
+            return data.map((item: unknown) => ({ json: item }));
+          }
+          return [{ json: data }];
+        },
+        constructExecutionMetaData: (items: unknown[]) => items,
+        prepareBinaryData: async (buffer: Buffer, fileName: string, mimeType: string) => ({
+          data: buffer.toString('base64'),
+          fileName,
+          mimeType,
+        }),
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  it('should create an envelope with access code authentication', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Access code test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        signerAuthentication: {
+          auth: { authMethod: 'accessCode', accessCode: 'secret123' },
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create an envelope with phone authentication', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Phone auth test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        signerAuthentication: {
+          auth: { authMethod: 'phone', phoneNumber: '+1-555-123-4567' },
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create an envelope with SMS authentication', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'SMS auth test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        signerAuthentication: {
+          auth: { authMethod: 'sms', phoneNumber: '+1-555-123-4567' },
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should handle auth with array format from n8n fixedCollection', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Auth array test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        signerAuthentication: {
+          auth: [{ authMethod: 'accessCode', accessCode: 'code456' }],
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+});
+
+describe('Envelope: new tab types', () => {
+  const VALID_UUID = '12345678-1234-1234-1234-123456789012';
+
+  const createExecuteContext2 = (params: Record<string, unknown>, apiResponse?: unknown) => {
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'envelope',
+          operation: 'create',
+          envelopeId: VALID_UUID,
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          apiResponse || { envelopeId: VALID_UUID, status: 'sent' },
+        returnJsonArray: (data: unknown) => {
+          if (Array.isArray(data)) {
+            return data.map((item: unknown) => ({ json: item }));
+          }
+          return [{ json: data }];
+        },
+        constructExecutionMetaData: (items: unknown[]) => items,
+        prepareBinaryData: async (buffer: Buffer, fileName: string, mimeType: string) => ({
+          data: buffer.toString('base64'),
+          fileName,
+          mimeType,
+        }),
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  it('should create an envelope with radio group tab', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Radio tab test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        additionalTabs: {
+          tabs: [
+            {
+              tabType: 'radioGroupTabs',
+              documentId: '1',
+              pageNumber: 1,
+              xPosition: 100,
+              yPosition: 200,
+              radioItems: 'Yes,No,Maybe',
+              groupName: 'agreeGroup',
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create an envelope with list/dropdown tab', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'List tab test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        additionalTabs: {
+          tabs: [
+            {
+              tabType: 'listTabs',
+              documentId: '1',
+              pageNumber: 1,
+              xPosition: 100,
+              yPosition: 200,
+              listItems: 'Option A,Option B,Option C',
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create an envelope with number tab', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Number tab test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        additionalTabs: {
+          tabs: [
+            {
+              tabType: 'numberTabs',
+              documentId: '1',
+              pageNumber: 1,
+              xPosition: 100,
+              yPosition: 200,
+              tabLabel: 'quantity',
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create an envelope with formula tab', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Formula tab test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        additionalTabs: {
+          tabs: [
+            {
+              tabType: 'formulaTabs',
+              documentId: '1',
+              pageNumber: 1,
+              xPosition: 100,
+              yPosition: 200,
+              formula: '[quantity] * [price]',
+              tabLabel: 'total',
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create an envelope with signer attachment tab', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      emailSubject: 'Attachment tab test',
+      signerEmail: 'signer@example.com',
+      signerName: 'Signer',
+      document: 'SGVsbG8gV29ybGQ=',
+      documentName: 'doc.pdf',
+      sendImmediately: true,
+      additionalOptions: {
+        additionalTabs: {
+          tabs: [
+            {
+              tabType: 'signerAttachmentTabs',
+              documentId: '1',
+              pageNumber: 1,
+              xPosition: 100,
+              yPosition: 200,
+              tabLabel: 'uploadDoc',
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+});
+
+describe('Envelope: correct operation', () => {
+  const VALID_UUID = '12345678-1234-1234-1234-123456789012';
+
+  const createExecuteContext2 = (params: Record<string, unknown>, apiResponse?: unknown) => {
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'envelope',
+          operation: 'correct',
+          envelopeId: VALID_UUID,
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          apiResponse || { url: 'https://demo.docusign.net/correct/12345' },
+        returnJsonArray: (data: unknown) => {
+          if (Array.isArray(data)) {
+            return data.map((item: unknown) => ({ json: item }));
+          }
+          return [{ json: data }];
+        },
+        constructExecutionMetaData: (items: unknown[]) => items,
+        prepareBinaryData: async (buffer: Buffer, fileName: string, mimeType: string) => ({
+          data: buffer.toString('base64'),
+          fileName,
+          mimeType,
+        }),
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  it('should generate a correction URL', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      envelopeId: VALID_UUID,
+      returnUrl: 'https://myapp.com/done',
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+    expect(result[0][0].json.url).toBe('https://demo.docusign.net/correct/12345');
+  });
+
+  it('should reject private URL for correction returnUrl', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createExecuteContext2({
+      envelopeId: VALID_UUID,
+      returnUrl: 'http://localhost:3000/done',
+    });
+
+    await expect(node.execute.call(ctx as never)).rejects.toThrow();
+  });
+});
+
+describe('Phase 2 resource definitions', () => {
+  it('should have correct operation in envelope operations', async () => {
+    const { envelopeOperations } = await import('../nodes/DocuSign/resources/envelope');
+    const options = envelopeOperations.options as Array<{ value: string; name: string }>;
+    const correctOp = options.find((o) => o.value === 'correct');
+
+    expect(correctOp).toBeDefined();
+    expect(correctOp?.name).toBe('Correct');
+  });
+
+  it('should have reminder and expiration options in additionalOptions', async () => {
+    const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
+    const options = additionalOptions?.options as Array<{ name: string }>;
+    const optionNames = options?.map((o) => o.name);
+
+    expect(optionNames).toContain('reminderEnabled');
+    expect(optionNames).toContain('reminderDelay');
+    expect(optionNames).toContain('reminderFrequency');
+    expect(optionNames).toContain('expireEnabled');
+    expect(optionNames).toContain('expireAfter');
+    expect(optionNames).toContain('expireWarn');
+  });
+
+  it('should have signer authentication option in additionalOptions', async () => {
+    const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
+    const options = additionalOptions?.options as Array<{ name: string }>;
+    const optionNames = options?.map((o) => o.name);
+
+    expect(optionNames).toContain('signerAuthentication');
+  });
+
+  it('should have new tab types in additionalTabs', async () => {
+    const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
+    const additionalOptions = envelopeFields.find((f) => f.name === 'additionalOptions');
+    const options = additionalOptions?.options as Array<{ name: string; options?: unknown[] }>;
+    const additionalTabs = options?.find((o) => o.name === 'additionalTabs');
+    const tabsOption = (
+      additionalTabs as {
+        options?: Array<{ values?: Array<{ name: string; options?: Array<{ value: string }> }> }>;
+      }
+    )?.options?.[0];
+    const tabTypeField = tabsOption?.values?.find((v) => v.name === 'tabType');
+    const tabTypeValues = tabTypeField?.options?.map((o) => o.value) || [];
+
+    expect(tabTypeValues).toContain('radioGroupTabs');
+    expect(tabTypeValues).toContain('listTabs');
+    expect(tabTypeValues).toContain('numberTabs');
+    expect(tabTypeValues).toContain('formulaTabs');
+    expect(tabTypeValues).toContain('signerAttachmentTabs');
+  });
+
+  it('should have returnUrl field for correct operation', async () => {
+    const { envelopeFields } = await import('../nodes/DocuSign/resources/envelope');
+    const returnUrlField = envelopeFields.find(
+      (f) => f.name === 'returnUrl' && f.displayOptions?.show?.operation?.includes('correct'),
+    );
+
+    expect(returnUrlField).toBeDefined();
+    expect(returnUrlField?.required).toBe(true);
+  });
+});
+
 describe('Credential Authentication', () => {
   it('should have correct properties defined', async () => {
     const { DocuSignApi } = await import('../credentials/DocuSignApi.credentials');
     const cred = new DocuSignApi();
-    const names = cred.properties.map(p => p.name);
+    const names = cred.properties.map((p) => p.name);
 
     expect(names).toContain('environment');
     expect(names).toContain('region');
@@ -2490,7 +3212,7 @@ describe('Credential Authentication', () => {
   it('should have region show only for production', async () => {
     const { DocuSignApi } = await import('../credentials/DocuSignApi.credentials');
     const cred = new DocuSignApi();
-    const regionProp = cred.properties.find(p => p.name === 'region');
+    const regionProp = cred.properties.find((p) => p.name === 'region');
 
     expect(regionProp?.displayOptions?.show?.environment).toEqual(['production']);
   });
@@ -2498,8 +3220,8 @@ describe('Credential Authentication', () => {
   it('should have password type for privateKey and webhookSecret', async () => {
     const { DocuSignApi } = await import('../credentials/DocuSignApi.credentials');
     const cred = new DocuSignApi();
-    const privateKeyProp = cred.properties.find(p => p.name === 'privateKey');
-    const webhookSecretProp = cred.properties.find(p => p.name === 'webhookSecret');
+    const privateKeyProp = cred.properties.find((p) => p.name === 'privateKey');
+    const webhookSecretProp = cred.properties.find((p) => p.name === 'webhookSecret');
 
     expect(privateKeyProp?.typeOptions?.password).toBe(true);
     expect(webhookSecretProp?.typeOptions?.password).toBe(true);

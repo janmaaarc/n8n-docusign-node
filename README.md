@@ -13,7 +13,10 @@ An [n8n](https://n8n.io/) community node for [DocuSign](https://www.docusign.com
 - **Embedded Signing** - Generate signing URLs for iframe integration in your app
 - **Multiple Signers & Documents** - Support for multiple signers with routing order and multiple documents per envelope
 - **Merge Fields** - Populate document placeholders like `{{FirstName}}` with dynamic values
-- **Advanced Tab Types** - Signature, initials, date, text fields, checkboxes, and more
+- **Advanced Tab Types** - Signature, initials, date, text, checkboxes, radio groups, dropdowns, numbers, formulas, signer attachments
+- **Reminders & Expiration** - Automatic reminder emails and envelope expiration deadlines
+- **Recipient Authentication** - Access code, phone, or SMS verification before signing
+- **Envelope Correction** - Fix sent envelopes without voiding via correction URL
 - **Custom Fields** - Add metadata fields to envelopes for tracking and reporting
 - **Template Support** - Create envelopes from pre-configured templates
 - **Webhook Trigger** - Real-time event notifications via DocuSign Connect
@@ -85,7 +88,7 @@ The main node for interacting with the DocuSign eSignature API.
 
 | Resource | Operations |
 |----------|------------|
-| **Envelope** | Create, Create From Template, Get, Get Many, Send, Resend, Void, Delete, Download Document, List Documents, Get Recipients, Update Recipients, Get Audit Events, Create Signing URL |
+| **Envelope** | Create, Create From Template, Get, Get Many, Send, Resend, Void, Delete, Download Document, List Documents, Get Recipients, Update Recipients, Get Audit Events, Create Signing URL, Correct |
 | **Template** | Get, Get Many |
 
 #### Envelope Create Options
@@ -97,8 +100,11 @@ The main node for interacting with the DocuSign eSignature API.
 | **Embedded Signing** | Enable for iframe integration (adds clientUserId) |
 | **Merge Fields** | Populate placeholders like `{{FirstName}}` with dynamic values |
 | **Custom Fields** | Add metadata fields for tracking |
-| **Additional Tabs** | Initial, date, text, checkbox, company, title fields |
+| **Additional Tabs** | Initial, date, text, checkbox, company, title, radio group, dropdown, number, formula, signer attachment |
 | **Anchor Tags** | Position signature fields using text anchors |
+| **Reminders** | Automatic reminder emails with configurable delay and frequency |
+| **Expiration** | Set envelope expiration with warning period |
+| **Signer Authentication** | Access code, phone, or SMS verification before signing |
 | **Allow Markup** | Let signers add comments and annotations |
 | **Allow Reassign** | Let signers reassign to another person |
 | **Brand ID** | Use custom branding for the envelope |
@@ -422,6 +428,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [n8n Community Nodes Documentation](https://docs.n8n.io/integrations/community-nodes/)
 
 ## Changelog
+
+### v0.6.0
+
+**New Features:**
+- Envelope reminders & expiration - automatic reminder emails and expiration deadlines
+- Recipient authentication - access code, phone, and SMS verification options
+- 5 new tab types: radio group, dropdown/list, number, formula, signer attachment
+- Envelope correction - generate correction URLs to fix sent envelopes without voiding
+- Test coverage to 93.62% (190 tests), DocuSign.node.ts at 98.45%
 
 ### v0.5.0
 

@@ -152,7 +152,9 @@ export class DocuSignTrigger implements INodeType {
   };
 
   async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-    const req = this.getRequestObject() as { headers: Record<string, string | string[] | undefined> };
+    const req = this.getRequestObject() as {
+      headers: Record<string, string | string[] | undefined>;
+    };
     const body = this.getBodyData();
     const verifySignature = this.getNodeParameter('verifySignature', true) as boolean;
     const selectedEvents = this.getNodeParameter('events', []) as string[];
@@ -209,16 +211,14 @@ export class DocuSignTrigger implements INodeType {
     // Replay attack protection - reject requests older than 5 minutes
     if (replayProtection) {
       const MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
-      const envelopeData = body.data as IDataObject || {};
+      const envelopeData = (body.data as IDataObject) || {};
       const envelopeSummary = (envelopeData.envelopeSummary || envelopeData) as IDataObject;
 
       // Check for timestamp in various locations DocuSign might send it
-      const timestampStr = (
-        envelopeSummary.generatedDateTime ||
+      const timestampStr = (envelopeSummary.generatedDateTime ||
         envelopeSummary.statusChangedDateTime ||
         envelopeSummary.sentDateTime ||
-        body.generatedDateTime
-      ) as string | undefined;
+        body.generatedDateTime) as string | undefined;
 
       if (timestampStr) {
         const webhookTime = new Date(timestampStr).getTime();
@@ -251,8 +251,9 @@ export class DocuSignTrigger implements INodeType {
     }
 
     // Extract envelope data (reuse from replay protection if already extracted)
-    const finalEnvelopeData = body.data as IDataObject || {};
-    const finalEnvelopeSummary = (finalEnvelopeData.envelopeSummary || finalEnvelopeData) as IDataObject;
+    const finalEnvelopeData = (body.data as IDataObject) || {};
+    const finalEnvelopeSummary = (finalEnvelopeData.envelopeSummary ||
+      finalEnvelopeData) as IDataObject;
 
     // Extract sender info with proper typing
     const sender = finalEnvelopeSummary.sender as IDataObject | undefined;

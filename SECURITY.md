@@ -4,6 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 0.6.x   | :white_check_mark: |
 | 0.5.x   | :white_check_mark: |
 | 0.4.x   | :white_check_mark: |
 | 0.3.x   | :white_check_mark: |
@@ -88,6 +89,11 @@ This node implements several security measures:
    - Use production only for live workflows
 
 ## Security Changelog
+
+### v0.6.0
+- Added recipient authentication options (access code, phone, SMS) for enhanced signing security
+- Correction URL validation uses existing SSRF-safe URL validator
+- Maintained all existing security features
 
 ### v0.5.0
 - Replaced restricted global `setTimeout` with `node:timers/promises` for n8n linter compliance

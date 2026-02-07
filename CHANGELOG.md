@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-02-07
+
+### Added
+- **Merge Fields for Create From Template** - Populate document placeholders with dynamic values when using templates
+- **Email Message for Create From Template** - Custom email body text option for template-based envelopes
+
+### Changed
+- **Test Coverage** - Added 2 new tests (192 total)
+
+---
+
+## [0.6.0] - 2026-02-07
+
+### Added
+- **Envelope Reminders & Expiration** - Configure automatic reminders and expiration deadlines on envelopes
+  - Send Reminders toggle with configurable delay and frequency
+  - Set Expiration toggle with configurable days and warning period
+- **Recipient Authentication** - Require additional verification before signing
+  - Access Code - Signer must enter a passcode
+  - Phone - Signer must verify via phone call
+  - SMS - Signer must verify via SMS code
+- **5 New Tab Types** - More form field options for signers
+  - Radio Group - Radio button selections
+  - Dropdown/List - Dropdown list selection
+  - Number - Numeric input field
+  - Formula - Calculated fields using expressions
+  - Signer Attachment - Let signers upload documents
+- **Envelope Correction** - Generate correction URLs for sent envelopes to fix mistakes without voiding
+
+### Changed
+- **Test Coverage to 93.62%** - Added 19 new tests (190 total), DocuSign.node.ts now at 98.45%
+- Updated TypeScript types for new tab types and notification settings
+
+---
+
 ## [0.5.0] - 2026-02-06
 
 ### Added

@@ -56,9 +56,7 @@ async function handleEnvelopeCreate(
       return binaryData[input].data;
     }
     if (!isValidBase64(input)) {
-      throw new Error(
-        'Document must be valid base64-encoded content or a binary property name',
-      );
+      throw new Error('Document must be valid base64-encoded content or a binary property name');
     }
     return input;
   };
@@ -70,7 +68,8 @@ async function handleEnvelopeCreate(
 
   // Add clientUserId for embedded signing if enabled
   if (additionalOptions.embeddedSigning) {
-    const clientUserId = (additionalOptions.embeddedClientUserId as string) ||
+    const clientUserId =
+      (additionalOptions.embeddedClientUserId as string) ||
       `embedded-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     signer.clientUserId = clientUserId;
   }
@@ -103,6 +102,31 @@ async function handleEnvelopeCreate(
     const tabsList = additionalTabsData.tabs as IDataObject[];
     for (const tab of tabsList) {
       const tabType = tab.tabType as string;
+
+      // Handle radioGroupTabs specially — different structure
+      if (tabType === 'radioGroupTabs') {
+        const radioItems = ((tab.radioItems as string) || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const radioTab: IDataObject = {
+          documentId: (tab.documentId as string) || '1',
+          groupName: (tab.groupName as string) || 'radioGroup',
+          radios: radioItems.map((item, idx) => ({
+            pageNumber: String(tab.pageNumber || 1),
+            xPosition: String(Number(tab.xPosition || 100)),
+            yPosition: String(Number(tab.yPosition || 150) + idx * 25),
+            value: item,
+            selected: 'false',
+          })),
+        };
+        if (!signerTabs.radioGroupTabs) {
+          signerTabs.radioGroupTabs = [];
+        }
+        (signerTabs.radioGroupTabs as IDataObject[]).push(radioTab);
+        continue;
+      }
+
       const tabObj: IDataObject = {
         documentId: (tab.documentId as string) || '1',
         pageNumber: String(tab.pageNumber || 1),
@@ -115,6 +139,25 @@ async function handleEnvelopeCreate(
       }
       if (tab.required) {
         tabObj.required = 'true';
+      }
+
+      // Handle listTabs — parse comma-separated items
+      if (tabType === 'listTabs') {
+        const items = ((tab.listItems as string) || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        tabObj.listItems = items.map((item, idx) => ({
+          text: item,
+          value: item.toLowerCase().replace(/\s+/g, '_'),
+          selected: idx === 0 ? 'true' : 'false',
+        }));
+      }
+
+      // Handle formulaTabs — add formula expression
+      if (tabType === 'formulaTabs') {
+        tabObj.formula = tab.formula as string;
+        tabObj.locked = 'true';
       }
 
       if (!signerTabs[tabType]) {
@@ -198,10 +241,12 @@ async function handleEnvelopeCreate(
       // Add signature tab for each document
       const tabs: IDataObject[] = [];
       for (let i = 0; i < documents.length; i++) {
-        tabs.push(buildSignHereTab((i + 1).toString(), '1', {
-          xPosition: DEFAULT_SIGNATURE_X.toString(),
-          yPosition: (DEFAULT_SIGNATURE_Y + (signerId - 1) * 50).toString(),
-        }));
+        tabs.push(
+          buildSignHereTab((i + 1).toString(), '1', {
+            xPosition: DEFAULT_SIGNATURE_X.toString(),
+            yPosition: (DEFAULT_SIGNATURE_Y + (signerId - 1) * 50).toString(),
+          }),
+        );
       }
       newSigner.tabs = { signHereTabs: tabs };
 
@@ -257,6 +302,49 @@ async function handleEnvelopeCreate(
     envelope.enforceSignerVisibility = additionalOptions.enforceSignerVisibility ? 'true' : 'false';
   }
 
+  // Add notification settings (reminders and expiration)
+  if (additionalOptions.reminderEnabled || additionalOptions.expireEnabled) {
+    const notification: IDataObject = { useAccountDefaults: 'false' };
+    if (additionalOptions.reminderEnabled) {
+      notification.reminders = {
+        reminderEnabled: 'true',
+        reminderDelay: String(additionalOptions.reminderDelay || 2),
+        reminderFrequency: String(additionalOptions.reminderFrequency || 1),
+      };
+    }
+    if (additionalOptions.expireEnabled) {
+      notification.expirations = {
+        expireEnabled: 'true',
+        expireAfter: String(additionalOptions.expireAfter || 120),
+        expireWarn: String(additionalOptions.expireWarn || 3),
+      };
+    }
+    envelope.notification = notification;
+  }
+
+  // Add signer authentication if specified
+  const signerAuth = additionalOptions.signerAuthentication as IDataObject | undefined;
+  if (signerAuth?.auth) {
+    const authData = Array.isArray(signerAuth.auth)
+      ? (signerAuth.auth as IDataObject[])[0]
+      : (signerAuth.auth as IDataObject);
+    if (authData) {
+      const method = authData.authMethod as string;
+      if (method === 'accessCode') {
+        signer.accessCode = authData.accessCode as string;
+      } else if (method === 'phone') {
+        signer.phoneAuthentication = {
+          recipMayProvideNumber: 'true',
+          senderProvidedNumbers: [authData.phoneNumber as string],
+        };
+      } else if (method === 'sms') {
+        signer.smsAuthentication = {
+          senderProvidedNumbers: [authData.phoneNumber as string],
+        };
+      }
+    }
+  }
+
   // Add custom fields if specified
   const customFieldsData = additionalOptions.customFields as IDataObject | undefined;
   if (customFieldsData?.textFields) {
@@ -301,6 +389,37 @@ async function handleEnvelopeCreateFromTemplate(
   validateField('Recipient Name', recipientName, 'required');
 
   const templateRole = buildTemplateRole(recipientEmail, recipientName, roleName);
+  const additionalOptions = ctx.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+
+  // Add merge fields as textTabs on the template role
+  const mergeFieldsData = additionalOptions.mergeFields as IDataObject | undefined;
+  if (mergeFieldsData?.fields) {
+    const fieldsList = mergeFieldsData.fields as IDataObject[];
+    const textTabs: IDataObject[] = [];
+
+    for (const field of fieldsList) {
+      const placeholder = field.placeholder as string;
+      const value = field.value as string;
+      const fontSize = (field.fontSize as string) || 'Size12';
+
+      if (placeholder && value !== undefined) {
+        textTabs.push({
+          anchorString: placeholder,
+          anchorUnits: 'pixels',
+          anchorXOffset: '0',
+          anchorYOffset: '0',
+          value,
+          fontSize,
+          locked: 'true',
+          tabLabel: `merge_${placeholder}`,
+        });
+      }
+    }
+
+    if (textTabs.length > 0) {
+      templateRole.tabs = { textTabs };
+    }
+  }
 
   const envelope: IDataObject = {
     templateId,
@@ -309,16 +428,17 @@ async function handleEnvelopeCreateFromTemplate(
     status: 'sent',
   };
 
+  if (additionalOptions.emailBlurb) {
+    envelope.emailBlurb = additionalOptions.emailBlurb;
+  }
+
   return await docuSignApiRequest.call(ctx, 'POST', '/envelopes', envelope);
 }
 
 /**
  * Handles getting a single envelope.
  */
-async function handleEnvelopeGet(
-  ctx: IExecuteFunctions,
-  itemIndex: number,
-): Promise<IDataObject> {
+async function handleEnvelopeGet(ctx: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
   const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
 
   validateField('Envelope ID', envelopeId, 'uuid');
@@ -354,13 +474,7 @@ async function handleEnvelopeGetAll(
   }
 
   if (returnAll) {
-    return await docuSignApiRequestAllItems.call(
-      ctx,
-      'GET',
-      '/envelopes',
-      'envelopes',
-      qs,
-    );
+    return await docuSignApiRequestAllItems.call(ctx, 'GET', '/envelopes', 'envelopes', qs);
   }
 
   const limit = ctx.getNodeParameter('limit', itemIndex);
@@ -373,44 +487,28 @@ async function handleEnvelopeGetAll(
 /**
  * Handles sending a draft envelope.
  */
-async function handleEnvelopeSend(
-  ctx: IExecuteFunctions,
-  itemIndex: number,
-): Promise<IDataObject> {
+async function handleEnvelopeSend(ctx: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
   const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
 
   validateField('Envelope ID', envelopeId, 'uuid');
 
-  return await docuSignApiRequest.call(
-    ctx,
-    'PUT',
-    `/envelopes/${envelopeId}`,
-    { status: 'sent' },
-  );
+  return await docuSignApiRequest.call(ctx, 'PUT', `/envelopes/${envelopeId}`, { status: 'sent' });
 }
 
 /**
  * Handles voiding an envelope.
  */
-async function handleEnvelopeVoid(
-  ctx: IExecuteFunctions,
-  itemIndex: number,
-): Promise<IDataObject> {
+async function handleEnvelopeVoid(ctx: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
   const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
   const voidReason = ctx.getNodeParameter('voidReason', itemIndex) as string;
 
   validateField('Envelope ID', envelopeId, 'uuid');
   validateField('Void Reason', voidReason, 'required');
 
-  return await docuSignApiRequest.call(
-    ctx,
-    'PUT',
-    `/envelopes/${envelopeId}`,
-    {
-      status: 'voided',
-      voidedReason: voidReason,
-    },
-  );
+  return await docuSignApiRequest.call(ctx, 'PUT', `/envelopes/${envelopeId}`, {
+    status: 'voided',
+    voidedReason: voidReason,
+  });
 }
 
 /**
@@ -435,16 +533,12 @@ async function handleEnvelopeDownloadDocument(
   const accountId = credentials.accountId as string;
   const baseUrl = getBaseUrl(environment, region);
 
-  const response = (await ctx.helpers.httpRequestWithAuthentication.call(
-    ctx,
-    'docuSignApi',
-    {
-      method: 'GET',
-      url: `${baseUrl}/accounts/${accountId}/envelopes/${envelopeId}/documents/${documentId}`,
-      encoding: 'arraybuffer',
-      returnFullResponse: true,
-    },
-  )) as { body: Buffer };
+  const response = (await ctx.helpers.httpRequestWithAuthentication.call(ctx, 'docuSignApi', {
+    method: 'GET',
+    url: `${baseUrl}/accounts/${accountId}/envelopes/${envelopeId}/documents/${documentId}`,
+    encoding: 'arraybuffer',
+    returnFullResponse: true,
+  })) as { body: Buffer };
 
   const binaryData: IBinaryData = await ctx.helpers.prepareBinaryData(
     Buffer.from(response.body),
@@ -531,12 +625,7 @@ async function handleEnvelopeUpdateRecipients(
     signers: [signer],
   };
 
-  return await docuSignApiRequest.call(
-    ctx,
-    'PUT',
-    `/envelopes/${envelopeId}/recipients`,
-    body,
-  );
+  return await docuSignApiRequest.call(ctx, 'PUT', `/envelopes/${envelopeId}/recipients`, body);
 }
 
 /**
@@ -566,12 +655,9 @@ async function handleEnvelopeDelete(
   validateField('Envelope ID', envelopeId, 'uuid');
 
   // DocuSign uses PUT with status "deleted" to delete draft envelopes
-  return await docuSignApiRequest.call(
-    ctx,
-    'PUT',
-    `/envelopes/${envelopeId}`,
-    { status: 'deleted' },
-  );
+  return await docuSignApiRequest.call(ctx, 'PUT', `/envelopes/${envelopeId}`, {
+    status: 'deleted',
+  });
 }
 
 /**
@@ -586,7 +672,11 @@ async function handleEnvelopeCreateRecipientView(
   const signerEmail = ctx.getNodeParameter('signerEmail', itemIndex) as string;
   const signerName = ctx.getNodeParameter('signerName', itemIndex) as string;
   const returnUrl = ctx.getNodeParameter('returnUrl', itemIndex) as string;
-  const authenticationMethod = ctx.getNodeParameter('authenticationMethod', itemIndex, 'None') as string;
+  const authenticationMethod = ctx.getNodeParameter(
+    'authenticationMethod',
+    itemIndex,
+    'None',
+  ) as string;
   const clientUserId = ctx.getNodeParameter('clientUserId', itemIndex, '') as string;
 
   validateField('Envelope ID', envelopeId, 'uuid');
@@ -631,6 +721,24 @@ async function handleEnvelopeListDocuments(
   return await docuSignApiRequest.call(ctx, 'GET', `/envelopes/${envelopeId}/documents`);
 }
 
+/**
+ * Handles generating a correction URL for a sent envelope.
+ */
+async function handleEnvelopeCorrect(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+  const returnUrl = ctx.getNodeParameter('returnUrl', itemIndex) as string;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+  validateField('Return URL', returnUrl, 'url');
+
+  return await docuSignApiRequest.call(ctx, 'POST', `/envelopes/${envelopeId}/views/correct`, {
+    returnUrl,
+  });
+}
+
 // ============================================================================
 // Template Handlers
 // ============================================================================
@@ -638,10 +746,7 @@ async function handleEnvelopeListDocuments(
 /**
  * Handles getting a single template.
  */
-async function handleTemplateGet(
-  ctx: IExecuteFunctions,
-  itemIndex: number,
-): Promise<IDataObject> {
+async function handleTemplateGet(ctx: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
   const templateId = ctx.getNodeParameter('templateId', itemIndex) as string;
 
   validateField('Template ID', templateId, 'uuid');
@@ -672,13 +777,7 @@ async function handleTemplateGetAll(
   }
 
   if (returnAll) {
-    return await docuSignApiRequestAllItems.call(
-      ctx,
-      'GET',
-      '/templates',
-      'envelopeTemplates',
-      qs,
-    );
+    return await docuSignApiRequestAllItems.call(ctx, 'GET', '/templates', 'envelopeTemplates', qs);
   }
 
   const limit = ctx.getNodeParameter('limit', itemIndex);
@@ -799,10 +898,18 @@ export class DocuSign implements INodeType {
               responseData = await handleEnvelopeListDocuments(this, i);
               break;
 
+            case 'correct':
+              responseData = await handleEnvelopeCorrect(this, i);
+              break;
+
             default:
-              throw new NodeApiError(this.getNode(), {}, {
-                message: `Unknown operation: ${operation}`,
-              });
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
           }
         }
 
@@ -820,14 +927,22 @@ export class DocuSign implements INodeType {
               break;
 
             default:
-              throw new NodeApiError(this.getNode(), {}, {
-                message: `Unknown operation: ${operation}`,
-              });
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
           }
         } else {
-          throw new NodeApiError(this.getNode(), {}, {
-            message: `Unknown resource: ${resource}`,
-          });
+          throw new NodeApiError(
+            this.getNode(),
+            {},
+            {
+              message: `Unknown resource: ${resource}`,
+            },
+          );
         }
 
         const executionData = this.helpers.constructExecutionMetaData(
@@ -851,9 +966,13 @@ export class DocuSign implements INodeType {
         if (error instanceof NodeApiError) {
           throw error;
         }
-        throw new NodeApiError(this.getNode(), { message: (error as Error).message }, {
-          message: `Failed to ${operation} ${resource}: ${(error as Error).message}`,
-        });
+        throw new NodeApiError(
+          this.getNode(),
+          { message: (error as Error).message },
+          {
+            message: `Failed to ${operation} ${resource}: ${(error as Error).message}`,
+          },
+        );
       }
     }
 

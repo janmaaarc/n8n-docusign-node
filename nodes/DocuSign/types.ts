@@ -56,6 +56,48 @@ export interface DocuSignTabs {
   dateSignedTabs?: DocuSignTab[];
   textTabs?: DocuSignTab[];
   checkboxTabs?: DocuSignTab[];
+  radioGroupTabs?: DocuSignRadioGroupTab[];
+  listTabs?: DocuSignTab[];
+  numberTabs?: DocuSignTab[];
+  formulaTabs?: DocuSignTab[];
+  signerAttachmentTabs?: DocuSignTab[];
+}
+
+/**
+ * Radio group tab with nested radio items
+ */
+export interface DocuSignRadioGroupTab {
+  documentId: string;
+  groupName: string;
+  radios: DocuSignRadioItem[];
+}
+
+/**
+ * Individual radio button item
+ */
+export interface DocuSignRadioItem {
+  pageNumber: string;
+  xPosition: string;
+  yPosition: string;
+  value: string;
+  selected: string;
+}
+
+/**
+ * Notification settings for envelope reminders and expiration
+ */
+export interface DocuSignNotification {
+  useAccountDefaults: string;
+  reminders?: {
+    reminderEnabled: string;
+    reminderDelay: string;
+    reminderFrequency: string;
+  };
+  expirations?: {
+    expireEnabled: string;
+    expireAfter: string;
+    expireWarn: string;
+  };
 }
 
 /**

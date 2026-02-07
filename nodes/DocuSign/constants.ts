@@ -37,7 +37,11 @@ export const DEFAULT_SIGNATURE_Y = 100;
 export const ENVELOPE_STATUSES = [
   { name: 'Created', value: 'created', description: 'Envelope is created but not yet sent' },
   { name: 'Sent', value: 'sent', description: 'Envelope has been sent to recipients' },
-  { name: 'Delivered', value: 'delivered', description: 'Envelope has been delivered to recipients' },
+  {
+    name: 'Delivered',
+    value: 'delivered',
+    description: 'Envelope has been delivered to recipients',
+  },
   { name: 'Signed', value: 'signed', description: 'All recipients have signed' },
   { name: 'Completed', value: 'completed', description: 'Envelope signing is complete' },
   { name: 'Declined', value: 'declined', description: 'A recipient declined to sign' },

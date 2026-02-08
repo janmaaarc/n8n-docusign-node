@@ -4,6 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 0.7.x   | :white_check_mark: |
 | 0.6.x   | :white_check_mark: |
 | 0.5.x   | :white_check_mark: |
 | 0.4.x   | :white_check_mark: |
@@ -89,6 +90,13 @@ This node implements several security measures:
    - Use production only for live workflows
 
 ## Security Changelog
+
+### v0.7.0
+- Bulk send recipient email validation before list creation
+- PowerForm template ID validation (UUID format)
+- Folder envelope ID validation for move operations
+- Folder search date filter validation (ISO 8601)
+- Maintained all existing security features
 
 ### v0.6.0
 - Added recipient authentication options (access code, phone, SMS) for enhanced signing security

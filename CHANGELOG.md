@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-02-08
+
+### Added
+- **Bulk Send** - Send envelopes to 100+ recipients at once
+  - Create List - Build bulk send lists with named recipients and roles
+  - Get List / Get Many Lists - Retrieve bulk send list details
+  - Delete List - Remove bulk send lists
+  - Send - Trigger bulk send using a list and envelope/template
+  - Get Batch Status - Monitor batch progress (sent, failed, queued)
+- **Template CRUD** - Full template lifecycle management
+  - Create - Create templates with documents and signer roles
+  - Update - Modify template name, description, and email subject
+  - Delete - Remove templates
+- **PowerForms** - Self-service signing links
+  - Create - Create PowerForms from templates with optional email, mobile, and usage limits
+  - Get / Get Many - Retrieve PowerForm details
+  - Delete - Remove PowerForms
+- **Folder Management** - Organize envelopes in folders
+  - Get Many - List all account folders
+  - Get Items - List envelopes in a folder with pagination
+  - Move Envelope - Move envelopes between folders
+  - Search - Search across system folders with text, date, and status filters
+
+### Changed
+- **Test Coverage to 95.6%** - Added 75 new tests (267 total), DocuSign.node.ts now at 99.67%
+- Extracted `resolveDocumentBase64` helper for shared document handling across envelope and template create
+
+---
+
 ## [0.6.1] - 2026-02-07
 
 ### Added

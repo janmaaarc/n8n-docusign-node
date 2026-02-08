@@ -231,6 +231,70 @@ export interface DocuSignOutput extends IDataObject {
 }
 
 /**
+ * Bulk send copy (one recipient in a bulk send list)
+ */
+export interface DocuSignBulkCopy {
+  recipients: DocuSignRecipients;
+  customFields?: IDataObject[];
+}
+
+/**
+ * Bulk send list
+ */
+export interface DocuSignBulkSendList {
+  listId?: string;
+  name: string;
+  bulkCopies: DocuSignBulkCopy[];
+}
+
+/**
+ * Bulk send batch status
+ */
+export interface DocuSignBulkSendBatchStatus {
+  batchId: string;
+  batchSize: string;
+  totalQueued: string;
+  totalSent: string;
+  totalFailed: string;
+}
+
+/**
+ * PowerForm definition
+ */
+export interface DocuSignPowerForm {
+  powerFormId?: string;
+  templateId: string;
+  name: string;
+  emailSubject?: string;
+  emailBody?: string;
+  signerCanSignOnMobile?: string;
+  isActive?: string;
+}
+
+/**
+ * Folder definition
+ */
+export interface DocuSignFolder {
+  folderId: string;
+  name: string;
+  type: string;
+  uri: string;
+  parentFolderId?: string;
+  subFolders?: DocuSignFolder[];
+}
+
+/**
+ * Folder items response
+ */
+export interface DocuSignFolderItemsResponse {
+  folderItems?: IDataObject[];
+  resultSetSize: string;
+  totalSetSize: string;
+  startPosition: string;
+  endPosition: string;
+}
+
+/**
  * Pagination options for list operations
  */
 export interface PaginationOptions {

@@ -15,6 +15,18 @@ export const templateOperations: INodeProperties = {
   },
   options: [
     {
+      name: 'Create',
+      value: 'create',
+      action: 'Create a template',
+      description: 'Create a new template with documents and roles',
+    },
+    {
+      name: 'Delete',
+      value: 'delete',
+      action: 'Delete a template',
+      description: 'Delete a template',
+    },
+    {
       name: 'Get',
       value: 'get',
       action: 'Get a template',
@@ -26,6 +38,12 @@ export const templateOperations: INodeProperties = {
       action: 'Get many templates',
       description: 'Get a list of templates',
     },
+    {
+      name: 'Update',
+      value: 'update',
+      action: 'Update a template',
+      description: 'Update an existing template',
+    },
   ],
   default: 'getAll',
 };
@@ -35,7 +53,99 @@ export const templateOperations: INodeProperties = {
  */
 export const templateFields: INodeProperties[] = [
   // ==========================================================================
-  // Get Operation Fields
+  // Create Operation Fields
+  // ==========================================================================
+  {
+    displayName: 'Email Subject',
+    name: 'emailSubject',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['template'],
+        operation: ['create'],
+      },
+    },
+    default: '',
+    description: 'Default email subject for envelopes created from this template',
+  },
+  {
+    displayName: 'Document',
+    name: 'document',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['template'],
+        operation: ['create'],
+      },
+    },
+    default: '',
+    description: 'Binary property name containing the document, or a base64-encoded string',
+  },
+  {
+    displayName: 'Document Name',
+    name: 'documentName',
+    type: 'string',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['template'],
+        operation: ['create'],
+      },
+    },
+    default: '',
+    placeholder: 'contract.pdf',
+    description: 'File name for the document (e.g., contract.pdf)',
+  },
+  {
+    displayName: 'Description',
+    name: 'description',
+    type: 'string',
+    displayOptions: {
+      show: {
+        resource: ['template'],
+        operation: ['create'],
+      },
+    },
+    default: '',
+    description: 'Template description',
+  },
+  {
+    displayName: 'Additional Options',
+    name: 'additionalOptions',
+    type: 'collection',
+    placeholder: 'Add Option',
+    default: {},
+    displayOptions: {
+      show: {
+        resource: ['template'],
+        operation: ['create'],
+      },
+    },
+    options: [
+      {
+        displayName: 'Email Message',
+        name: 'emailBlurb',
+        type: 'string',
+        default: '',
+        description: 'Default email body text for envelopes created from this template',
+        typeOptions: {
+          rows: 3,
+        },
+      },
+      {
+        displayName: 'Role Name',
+        name: 'roleName',
+        type: 'string',
+        default: 'Signer',
+        description: 'Default signer role name for the template',
+      },
+    ],
+  },
+
+  // ==========================================================================
+  // Get / Update / Delete Operation Fields
   // ==========================================================================
   {
     displayName: 'Template ID',
@@ -45,11 +155,51 @@ export const templateFields: INodeProperties[] = [
     displayOptions: {
       show: {
         resource: ['template'],
-        operation: ['get'],
+        operation: ['get', 'update', 'delete'],
       },
     },
     default: '',
-    description: 'The ID of the template to retrieve',
+    description: 'The ID of the template',
+  },
+
+  // ==========================================================================
+  // Update Operation Fields
+  // ==========================================================================
+  {
+    displayName: 'Update Fields',
+    name: 'updateFields',
+    type: 'collection',
+    placeholder: 'Add Field',
+    default: {},
+    displayOptions: {
+      show: {
+        resource: ['template'],
+        operation: ['update'],
+      },
+    },
+    options: [
+      {
+        displayName: 'Email Subject',
+        name: 'emailSubject',
+        type: 'string',
+        default: '',
+        description: 'Default email subject for envelopes created from this template',
+      },
+      {
+        displayName: 'Description',
+        name: 'description',
+        type: 'string',
+        default: '',
+        description: 'Template description',
+      },
+      {
+        displayName: 'Name',
+        name: 'name',
+        type: 'string',
+        default: '',
+        description: 'Template name',
+      },
+    ],
   },
 
   // ==========================================================================

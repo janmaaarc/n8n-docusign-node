@@ -10,7 +10,13 @@
  * @module helpers
  */
 
-import type { IExecuteFunctions, IDataObject, JsonObject, IHttpRequestMethods } from 'n8n-workflow';
+import type {
+  IExecuteFunctions,
+  INodeExecutionData,
+  IDataObject,
+  JsonObject,
+  IHttpRequestMethods,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 import * as crypto from 'crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -760,4 +766,27 @@ export function buildTemplateRole(email: string, name: string, roleName: string)
     name,
     roleName,
   };
+}
+
+/**
+ * Resolves document content from binary data or base64 string.
+ *
+ * @param items - The input items array
+ * @param itemIndex - Current item index
+ * @param documentInput - Binary property name or base64 string
+ * @returns Base64-encoded document content
+ */
+export function resolveDocumentBase64(
+  items: INodeExecutionData[],
+  itemIndex: number,
+  documentInput: string,
+): string {
+  const binaryData = items[itemIndex].binary;
+  if (binaryData && binaryData[documentInput]) {
+    return binaryData[documentInput].data;
+  }
+  if (!isValidBase64(documentInput)) {
+    throw new Error('Document must be valid base64-encoded content or a binary property name');
+  }
+  return documentInput;
 }

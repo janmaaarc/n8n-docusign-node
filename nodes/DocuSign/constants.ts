@@ -88,6 +88,9 @@ export const RESOURCE_ENDPOINTS: Record<string, string> = {
   envelope: 'envelopes',
   template: 'templates',
   document: 'documents',
+  bulkSend: 'bulk_send_lists',
+  powerForm: 'powerforms',
+  folder: 'folders',
 };
 
 /**
@@ -97,7 +100,31 @@ export const RESOURCE_ID_PARAMS: Record<string, string> = {
   envelope: 'envelopeId',
   template: 'templateId',
   document: 'documentId',
+  bulkSend: 'listId',
+  powerForm: 'powerFormId',
+  folder: 'folderId',
 };
+
+/**
+ * System search folder IDs for folder search operations
+ */
+export const SEARCH_FOLDER_IDS = [
+  { name: 'Drafts', value: 'drafts', description: 'Draft envelopes' },
+  {
+    name: 'Awaiting My Signature',
+    value: 'awaiting_my_signature',
+    description: 'Envelopes waiting for your signature',
+  },
+  { name: 'Completed', value: 'completed', description: 'Completed envelopes' },
+  {
+    name: 'Out for Signature',
+    value: 'out_for_signature',
+    description: 'Envelopes sent out for signature',
+  },
+  { name: 'Inbox', value: 'inbox', description: 'Received envelopes' },
+  { name: 'Sent Items', value: 'sentitems', description: 'Sent envelopes' },
+  { name: 'Recycled', value: 'recyclebin', description: 'Deleted envelopes' },
+];
 
 /**
  * Signature tab types

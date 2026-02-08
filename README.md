@@ -18,7 +18,10 @@ An [n8n](https://n8n.io/) community node for [DocuSign](https://www.docusign.com
 - **Recipient Authentication** - Access code, phone, or SMS verification before signing
 - **Envelope Correction** - Fix sent envelopes without voiding via correction URL
 - **Custom Fields** - Add metadata fields to envelopes for tracking and reporting
-- **Template Support** - Create envelopes from pre-configured templates
+- **Template CRUD** - Create, get, update, and delete templates with documents and roles
+- **Bulk Send** - Send envelopes to 100+ recipients via bulk send lists
+- **PowerForms** - Create self-service signing links from templates
+- **Folder Management** - List folders, get items, move envelopes, and search across system folders
 - **Webhook Trigger** - Real-time event notifications via DocuSign Connect
 - **Regional Support** - NA, EU, AU, and CA regions for production environments
 - **Rate Limiting** - Built-in retry logic with exponential backoff
@@ -89,7 +92,10 @@ The main node for interacting with the DocuSign eSignature API.
 | Resource | Operations |
 |----------|------------|
 | **Envelope** | Create, Create From Template, Get, Get Many, Send, Resend, Void, Delete, Download Document, List Documents, Get Recipients, Update Recipients, Get Audit Events, Create Signing URL, Correct |
-| **Template** | Get, Get Many |
+| **Template** | Create, Get, Get Many, Update, Delete |
+| **Bulk Send** | Create List, Get List, Get Many Lists, Delete List, Send, Get Batch Status |
+| **PowerForm** | Create, Get, Get Many, Delete |
+| **Folder** | Get Many, Get Items, Move Envelope, Search |
 
 #### Envelope Create Options
 
@@ -293,10 +299,10 @@ Copy and import this JSON into n8n via **Workflows > Import from URL/File**:
 
 | Filter | Description | Available On |
 |--------|-------------|--------------|
-| `status` | Filter by envelope status | Envelopes |
-| `fromDate` | Start date for date range | Envelopes |
-| `toDate` | End date for date range | Envelopes |
-| `searchText` | Search by subject or recipient | Envelopes, Templates |
+| `status` | Filter by envelope status | Envelopes, Folder Search |
+| `fromDate` | Start date for date range | Envelopes, Folder Search |
+| `toDate` | End date for date range | Envelopes, Folder Search |
+| `searchText` | Search by subject or recipient | Envelopes, Templates, Folder Search |
 | `folderId` | Filter by folder | Templates |
 
 ## Security
@@ -428,6 +434,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [n8n Community Nodes Documentation](https://docs.n8n.io/integrations/community-nodes/)
 
 ## Changelog
+
+### v0.7.0
+
+**Power Features:**
+- **Bulk Send** - Create recipient lists, send to 100+ recipients, monitor batch status
+- **Template CRUD** - Full template lifecycle: create with documents, update metadata, delete
+- **PowerForms** - Self-service signing links with configurable email, mobile, and usage limits
+- **Folder Management** - List folders, browse items, move envelopes, search with text/date/status filters
+- Test coverage to 95.6% (267 tests), DocuSign.node.ts at 99.67%
 
 ### v0.6.0
 

@@ -16,7 +16,10 @@ nodes/DocuSign/
 ├── constants.ts              # API URLs, status codes, defaults
 ├── types.ts                  # TypeScript interfaces
 └── resources/                # UI field definitions by resource
+    ├── bulkSend.ts
     ├── envelope.ts
+    ├── folder.ts
+    ├── powerForm.ts
     ├── template.ts
     └── index.ts
 

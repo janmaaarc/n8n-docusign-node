@@ -18,7 +18,7 @@ import {
   buildTemplateRole,
   getFileExtension,
   getBaseUrl,
-  isValidBase64,
+  resolveDocumentBase64,
 } from './helpers';
 import { resourceProperty, allOperations, allFields } from './resources';
 import { DEFAULT_SIGNATURE_X, DEFAULT_SIGNATURE_Y } from './constants';
@@ -50,18 +50,7 @@ async function handleEnvelopeCreate(
   validateField('Signer Name', signerName, 'required');
 
   // Get primary document content
-  const binaryData = items[itemIndex].binary;
-  const getDocumentBase64 = (input: string): string => {
-    if (binaryData && binaryData[input]) {
-      return binaryData[input].data;
-    }
-    if (!isValidBase64(input)) {
-      throw new Error('Document must be valid base64-encoded content or a binary property name');
-    }
-    return input;
-  };
-
-  const documentBase64 = getDocumentBase64(documentInput);
+  const documentBase64 = resolveDocumentBase64(items, itemIndex, documentInput);
 
   // Build primary signer with signature tab
   const signer = buildSigner(signerEmail, signerName, '1', '1');
@@ -209,7 +198,7 @@ async function handleEnvelopeCreate(
     const docsList = additionalDocs.documents as IDataObject[];
     let docId = 2;
     for (const doc of docsList) {
-      const docContent = getDocumentBase64(doc.document as string);
+      const docContent = resolveDocumentBase64(items, itemIndex, doc.document as string);
       const docName = doc.documentName as string;
       validateField('Additional Document Name', docName, 'required');
       const ext = getFileExtension(docName);
@@ -744,6 +733,61 @@ async function handleEnvelopeCorrect(
 // ============================================================================
 
 /**
+ * Handles creating a new template with documents.
+ */
+async function handleTemplateCreate(
+  ctx: IExecuteFunctions,
+  items: INodeExecutionData[],
+  itemIndex: number,
+): Promise<IDataObject> {
+  const emailSubject = ctx.getNodeParameter('emailSubject', itemIndex) as string;
+  const documentInput = ctx.getNodeParameter('document', itemIndex) as string;
+  const documentName = ctx.getNodeParameter('documentName', itemIndex) as string;
+  const description = ctx.getNodeParameter('description', itemIndex, '') as string;
+  const additionalOptions = ctx.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+
+  validateField('Email Subject', emailSubject, 'required');
+  validateField('Document Name', documentName, 'required');
+
+  const documentBase64 = resolveDocumentBase64(items, itemIndex, documentInput);
+  const fileExtension = getFileExtension(documentName);
+  const document = buildDocument(documentBase64, '1', documentName, fileExtension);
+
+  const roleName = (additionalOptions.roleName as string) || 'Signer';
+
+  const template: IDataObject = {
+    emailSubject,
+    documents: [document],
+    recipients: {
+      signers: [
+        {
+          recipientId: '1',
+          routingOrder: '1',
+          roleName,
+          tabs: {
+            signHereTabs: [
+              buildSignHereTab('1', '1', {
+                xPosition: DEFAULT_SIGNATURE_X.toString(),
+                yPosition: DEFAULT_SIGNATURE_Y.toString(),
+              }),
+            ],
+          },
+        },
+      ],
+    },
+  };
+
+  if (description) {
+    template.description = description;
+  }
+  if (additionalOptions.emailBlurb) {
+    template.emailBlurb = additionalOptions.emailBlurb;
+  }
+
+  return await docuSignApiRequest.call(ctx, 'POST', '/templates', template);
+}
+
+/**
  * Handles getting a single template.
  */
 async function handleTemplateGet(ctx: IExecuteFunctions, itemIndex: number): Promise<IDataObject> {
@@ -785,6 +829,388 @@ async function handleTemplateGetAll(
 
   const response = await docuSignApiRequest.call(ctx, 'GET', '/templates', undefined, qs);
   return (response.envelopeTemplates as IDataObject[]) || [];
+}
+
+/**
+ * Handles updating a template.
+ */
+async function handleTemplateUpdate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const templateId = ctx.getNodeParameter('templateId', itemIndex) as string;
+  const updateFields = ctx.getNodeParameter('updateFields', itemIndex, {});
+
+  validateField('Template ID', templateId, 'uuid');
+
+  if (!updateFields.emailSubject && !updateFields.description && !updateFields.name) {
+    throw new Error('At least one update field is required');
+  }
+
+  const body: IDataObject = {};
+  if (updateFields.emailSubject) {
+    body.emailSubject = updateFields.emailSubject;
+  }
+  if (updateFields.description) {
+    body.description = updateFields.description;
+  }
+  if (updateFields.name) {
+    body.name = updateFields.name;
+  }
+
+  return await docuSignApiRequest.call(ctx, 'PUT', `/templates/${templateId}`, body);
+}
+
+/**
+ * Handles deleting a template.
+ */
+async function handleTemplateDelete(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const templateId = ctx.getNodeParameter('templateId', itemIndex) as string;
+
+  validateField('Template ID', templateId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'DELETE', `/templates/${templateId}`);
+}
+
+// ============================================================================
+// Bulk Send Handlers
+// ============================================================================
+
+/**
+ * Handles creating a bulk send list.
+ */
+async function handleBulkSendCreateList(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const listName = ctx.getNodeParameter('listName', itemIndex) as string;
+  const recipientsData = ctx.getNodeParameter('recipients', itemIndex, {}) as IDataObject;
+
+  validateField('List Name', listName, 'required');
+
+  const bulkCopies: IDataObject[] = [];
+  if (recipientsData.recipient) {
+    const recipients = recipientsData.recipient as IDataObject[];
+    for (const r of recipients) {
+      validateField('Recipient Email', r.email as string, 'email');
+      validateField('Recipient Name', r.name as string, 'required');
+      bulkCopies.push({
+        recipients: {
+          signers: [
+            {
+              email: r.email,
+              name: r.name,
+              roleName: (r.roleName as string) || 'Signer',
+            },
+          ],
+        },
+      });
+    }
+  }
+
+  return await docuSignApiRequest.call(ctx, 'POST', '/bulk_send_lists', {
+    name: listName,
+    bulkCopies,
+  });
+}
+
+/**
+ * Handles getting a bulk send list.
+ */
+async function handleBulkSendGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const listId = ctx.getNodeParameter('listId', itemIndex) as string;
+
+  validateField('List ID', listId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'GET', `/bulk_send_lists/${listId}`);
+}
+
+/**
+ * Handles getting all bulk send lists.
+ */
+async function handleBulkSendGetAll(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject[]> {
+  const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
+
+  if (returnAll) {
+    return await docuSignApiRequestAllItems.call(
+      ctx,
+      'GET',
+      '/bulk_send_lists',
+      'bulkSendLists',
+      {},
+    );
+  }
+
+  const limit = ctx.getNodeParameter('limit', itemIndex);
+  const response = await docuSignApiRequest.call(ctx, 'GET', '/bulk_send_lists', undefined, {
+    count: limit,
+  });
+  return (response.bulkSendLists as IDataObject[]) || [];
+}
+
+/**
+ * Handles deleting a bulk send list.
+ */
+async function handleBulkSendDeleteList(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const listId = ctx.getNodeParameter('listId', itemIndex) as string;
+
+  validateField('List ID', listId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'DELETE', `/bulk_send_lists/${listId}`);
+}
+
+/**
+ * Handles sending bulk envelopes.
+ */
+async function handleBulkSendSend(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const listId = ctx.getNodeParameter('listId', itemIndex) as string;
+  const envelopeOrTemplateId = ctx.getNodeParameter(
+    'envelopeOrTemplateId',
+    itemIndex,
+  ) as string;
+
+  validateField('List ID', listId, 'uuid');
+  validateField('Envelope/Template ID', envelopeOrTemplateId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'POST', `/bulk_send_lists/${listId}/send`, {
+    envelopeOrTemplateId,
+  });
+}
+
+/**
+ * Handles getting bulk send batch status.
+ */
+async function handleBulkSendGetBatchStatus(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const listId = ctx.getNodeParameter('listId', itemIndex) as string;
+  const batchId = ctx.getNodeParameter('batchId', itemIndex) as string;
+
+  validateField('List ID', listId, 'uuid');
+  validateField('Batch ID', batchId, 'uuid');
+
+  return await docuSignApiRequest.call(
+    ctx,
+    'GET',
+    `/bulk_send_lists/${listId}/batches/${batchId}`,
+  );
+}
+
+// ============================================================================
+// PowerForm Handlers
+// ============================================================================
+
+/**
+ * Handles creating a PowerForm.
+ */
+async function handlePowerFormCreate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const templateId = ctx.getNodeParameter('templateId', itemIndex) as string;
+  const name = ctx.getNodeParameter('name', itemIndex) as string;
+  const additionalOptions = ctx.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+
+  validateField('Template ID', templateId, 'uuid');
+  validateField('Name', name, 'required');
+
+  const body: IDataObject = { templateId, name };
+
+  if (additionalOptions.emailSubject) {
+    body.emailSubject = additionalOptions.emailSubject;
+  }
+  if (additionalOptions.emailBody) {
+    body.emailBody = additionalOptions.emailBody;
+  }
+  if (additionalOptions.signerCanSignOnMobile !== undefined) {
+    body.signerCanSignOnMobile = additionalOptions.signerCanSignOnMobile ? 'true' : 'false';
+  }
+  if (additionalOptions.maxUse) {
+    body.maxUse = String(additionalOptions.maxUse);
+  }
+
+  return await docuSignApiRequest.call(ctx, 'POST', '/powerforms', body);
+}
+
+/**
+ * Handles getting a single PowerForm.
+ */
+async function handlePowerFormGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const powerFormId = ctx.getNodeParameter('powerFormId', itemIndex) as string;
+
+  validateField('PowerForm ID', powerFormId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'GET', `/powerforms/${powerFormId}`);
+}
+
+/**
+ * Handles getting all PowerForms.
+ */
+async function handlePowerFormGetAll(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject[]> {
+  const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
+
+  if (returnAll) {
+    return await docuSignApiRequestAllItems.call(ctx, 'GET', '/powerforms', 'powerForms', {});
+  }
+
+  const limit = ctx.getNodeParameter('limit', itemIndex);
+  const response = await docuSignApiRequest.call(ctx, 'GET', '/powerforms', undefined, {
+    count: limit,
+  });
+  return (response.powerForms as IDataObject[]) || [];
+}
+
+/**
+ * Handles deleting a PowerForm.
+ */
+async function handlePowerFormDelete(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const powerFormId = ctx.getNodeParameter('powerFormId', itemIndex) as string;
+
+  validateField('PowerForm ID', powerFormId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'DELETE', `/powerforms/${powerFormId}`);
+}
+
+// ============================================================================
+// Folder Handlers
+// ============================================================================
+
+/**
+ * Handles getting all folders.
+ */
+async function handleFolderGetAll(ctx: IExecuteFunctions): Promise<IDataObject> {
+  return await docuSignApiRequest.call(ctx, 'GET', '/folders');
+}
+
+/**
+ * Handles getting items in a folder.
+ */
+async function handleFolderGetItems(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject[]> {
+  const folderId = ctx.getNodeParameter('folderId', itemIndex) as string;
+  const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
+
+  validateField('Folder ID', folderId, 'required');
+
+  if (returnAll) {
+    return await docuSignApiRequestAllItems.call(
+      ctx,
+      'GET',
+      `/folders/${folderId}`,
+      'folderItems',
+      {},
+    );
+  }
+
+  const limit = ctx.getNodeParameter('limit', itemIndex);
+  const response = await docuSignApiRequest.call(ctx, 'GET', `/folders/${folderId}`, undefined, {
+    count: limit,
+  });
+  return (response.folderItems as IDataObject[]) || [];
+}
+
+/**
+ * Handles moving envelopes to a folder.
+ */
+async function handleFolderMoveEnvelope(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const folderId = ctx.getNodeParameter('folderId', itemIndex) as string;
+  const envelopeIdsStr = ctx.getNodeParameter('envelopeIds', itemIndex) as string;
+
+  validateField('Folder ID', folderId, 'required');
+  validateField('Envelope IDs', envelopeIdsStr, 'required');
+
+  const envelopeIds = envelopeIdsStr
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+  for (const id of envelopeIds) {
+    validateField('Envelope ID', id, 'uuid');
+  }
+
+  return await docuSignApiRequest.call(ctx, 'PUT', `/folders/${folderId}`, {
+    envelopeIds: envelopeIds.map((envelopeId) => ({ envelopeId })),
+  });
+}
+
+/**
+ * Handles searching folders for envelopes.
+ */
+async function handleFolderSearch(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject[]> {
+  const searchFolderId = ctx.getNodeParameter('searchFolderId', itemIndex) as string;
+  const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
+  const filters = ctx.getNodeParameter('filters', itemIndex, {});
+  const qs: Record<string, string | number> = {};
+
+  validateField('Search Folder ID', searchFolderId, 'required');
+
+  if (filters.searchText) {
+    qs.search_text = filters.searchText as string;
+  }
+  if (filters.fromDate) {
+    validateField('From Date', filters.fromDate as string, 'date');
+    qs.from_date = filters.fromDate as string;
+  }
+  if (filters.toDate) {
+    validateField('To Date', filters.toDate as string, 'date');
+    qs.to_date = filters.toDate as string;
+  }
+  if (filters.status) {
+    qs.status = filters.status as string;
+  }
+
+  if (returnAll) {
+    return await docuSignApiRequestAllItems.call(
+      ctx,
+      'GET',
+      `/search_folders/${searchFolderId}`,
+      'folderItems',
+      qs,
+    );
+  }
+
+  const limit = ctx.getNodeParameter('limit', itemIndex);
+  qs.count = limit;
+  const response = await docuSignApiRequest.call(
+    ctx,
+    'GET',
+    `/search_folders/${searchFolderId}`,
+    undefined,
+    qs,
+  );
+  return (response.folderItems as IDataObject[]) || [];
 }
 
 // ============================================================================
@@ -918,12 +1344,128 @@ export class DocuSign implements INodeType {
         // ==========================================================================
         else if (resource === 'template') {
           switch (operation) {
+            case 'create':
+              responseData = await handleTemplateCreate(this, items, i);
+              break;
+
             case 'get':
               responseData = await handleTemplateGet(this, i);
               break;
 
             case 'getAll':
               responseData = await handleTemplateGetAll(this, i);
+              break;
+
+            case 'update':
+              responseData = await handleTemplateUpdate(this, i);
+              break;
+
+            case 'delete':
+              responseData = await handleTemplateDelete(this, i);
+              break;
+
+            default:
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
+          }
+        }
+
+        // ==========================================================================
+        // Bulk Send Resource
+        // ==========================================================================
+        else if (resource === 'bulkSend') {
+          switch (operation) {
+            case 'createList':
+              responseData = await handleBulkSendCreateList(this, i);
+              break;
+
+            case 'get':
+              responseData = await handleBulkSendGet(this, i);
+              break;
+
+            case 'getAll':
+              responseData = await handleBulkSendGetAll(this, i);
+              break;
+
+            case 'deleteList':
+              responseData = await handleBulkSendDeleteList(this, i);
+              break;
+
+            case 'send':
+              responseData = await handleBulkSendSend(this, i);
+              break;
+
+            case 'getBatchStatus':
+              responseData = await handleBulkSendGetBatchStatus(this, i);
+              break;
+
+            default:
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
+          }
+        }
+
+        // ==========================================================================
+        // PowerForm Resource
+        // ==========================================================================
+        else if (resource === 'powerForm') {
+          switch (operation) {
+            case 'create':
+              responseData = await handlePowerFormCreate(this, i);
+              break;
+
+            case 'get':
+              responseData = await handlePowerFormGet(this, i);
+              break;
+
+            case 'getAll':
+              responseData = await handlePowerFormGetAll(this, i);
+              break;
+
+            case 'delete':
+              responseData = await handlePowerFormDelete(this, i);
+              break;
+
+            default:
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
+          }
+        }
+
+        // ==========================================================================
+        // Folder Resource
+        // ==========================================================================
+        else if (resource === 'folder') {
+          switch (operation) {
+            case 'getAll':
+              responseData = await handleFolderGetAll(this);
+              break;
+
+            case 'getItems':
+              responseData = await handleFolderGetItems(this, i);
+              break;
+
+            case 'moveEnvelope':
+              responseData = await handleFolderMoveEnvelope(this, i);
+              break;
+
+            case 'search':
+              responseData = await handleFolderSearch(this, i);
               break;
 
             default:

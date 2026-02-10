@@ -295,6 +295,67 @@ export interface DocuSignFolderItemsResponse {
 }
 
 /**
+ * Signing group definition
+ */
+export interface DocuSignSigningGroup {
+  signingGroupId?: string;
+  groupName: string;
+  groupType?: string;
+  users?: DocuSignSigningGroupUser[];
+}
+
+/**
+ * Signing group member
+ */
+export interface DocuSignSigningGroupUser {
+  email: string;
+  userName: string;
+}
+
+/**
+ * Brand definition
+ */
+export interface DocuSignBrand {
+  brandId?: string;
+  brandName: string;
+  brandCompany?: string;
+  isOverridingCompanyName?: boolean;
+  defaultBrandLanguage?: string;
+}
+
+/**
+ * Envelope lock definition
+ */
+export interface DocuSignEnvelopeLock {
+  lockDurationInSeconds?: string;
+  lockType?: string;
+  lockedByApp?: string;
+  lockToken?: string;
+  expiresIn?: string;
+}
+
+/**
+ * Document generation form field
+ */
+export interface DocuSignDocGenFormField {
+  name: string;
+  value: string;
+  type?: string;
+  documentId?: string;
+}
+
+/**
+ * SMS delivery notification for recipients
+ */
+export interface DocuSignAdditionalNotification {
+  secondaryDeliveryMethod: string;
+  phoneNumber: {
+    countryCode: string;
+    number: string;
+  };
+}
+
+/**
  * Pagination options for list operations
  */
 export interface PaginationOptions {

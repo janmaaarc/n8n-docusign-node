@@ -334,6 +334,26 @@ async function handleEnvelopeCreate(
     }
   }
 
+  // Add SMS delivery notification if specified
+  const smsDeliveryData = additionalOptions.smsDelivery as IDataObject | undefined;
+  if (smsDeliveryData?.sms) {
+    const smsData = Array.isArray(smsDeliveryData.sms)
+      ? (smsDeliveryData.sms as IDataObject[])[0]
+      : (smsDeliveryData.sms as IDataObject);
+    if (smsData && smsData.phoneNumber) {
+      validateField('SMS Phone Number', smsData.phoneNumber as string, 'required');
+      signer.additionalNotifications = [
+        {
+          secondaryDeliveryMethod: 'SMS',
+          phoneNumber: {
+            countryCode: (smsData.countryCode as string) || '1',
+            number: smsData.phoneNumber as string,
+          },
+        },
+      ];
+    }
+  }
+
   // Add custom fields if specified
   const customFieldsData = additionalOptions.customFields as IDataObject | undefined;
   if (customFieldsData?.textFields) {
@@ -1214,6 +1234,435 @@ async function handleFolderSearch(
 }
 
 // ============================================================================
+// Envelope Lock Handlers
+// ============================================================================
+
+/**
+ * Handles locking an envelope for editing.
+ */
+async function handleEnvelopeLockCreate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+  const lockDurationInSeconds = ctx.getNodeParameter('lockDurationInSeconds', itemIndex) as number;
+  const lockedByApp = ctx.getNodeParameter('lockedByApp', itemIndex, 'n8n') as string;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'POST', `/envelopes/${envelopeId}/lock`, {
+    lockDurationInSeconds: String(lockDurationInSeconds),
+    lockedByApp,
+    lockType: 'edit',
+  });
+}
+
+/**
+ * Handles getting lock information for an envelope.
+ */
+async function handleEnvelopeLockGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'GET', `/envelopes/${envelopeId}/lock`);
+}
+
+/**
+ * Handles updating an existing envelope lock.
+ */
+async function handleEnvelopeLockUpdate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+  const lockToken = ctx.getNodeParameter('lockToken', itemIndex) as string;
+  const lockDurationInSeconds = ctx.getNodeParameter(
+    'lockDurationInSeconds',
+    itemIndex,
+    300,
+  ) as number;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+  validateField('Lock Token', lockToken, 'required');
+
+  const headers: Record<string, string> = {
+    'X-DocuSign-Edit': JSON.stringify({
+      LockToken: lockToken,
+      LockDurationInSeconds: String(lockDurationInSeconds),
+    }),
+  };
+
+  return await docuSignApiRequest.call(
+    ctx,
+    'PUT',
+    `/envelopes/${envelopeId}/lock`,
+    {
+      lockDurationInSeconds: String(lockDurationInSeconds),
+      lockType: 'edit',
+    },
+    {},
+    undefined,
+    headers,
+  );
+}
+
+/**
+ * Handles unlocking an envelope.
+ */
+async function handleEnvelopeLockDelete(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+  const lockToken = ctx.getNodeParameter('lockToken', itemIndex) as string;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+  validateField('Lock Token', lockToken, 'required');
+
+  const headers: Record<string, string> = {
+    'X-DocuSign-Edit': JSON.stringify({
+      LockToken: lockToken,
+    }),
+  };
+
+  return await docuSignApiRequest.call(
+    ctx,
+    'DELETE',
+    `/envelopes/${envelopeId}/lock`,
+    undefined,
+    {},
+    undefined,
+    headers,
+  );
+}
+
+// ============================================================================
+// Document Generation Handlers
+// ============================================================================
+
+/**
+ * Handles getting document generation form fields from a draft envelope.
+ */
+async function handleDocGenGetFormFields(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+
+  return await docuSignApiRequest.call(
+    ctx,
+    'GET',
+    `/envelopes/${envelopeId}/docGenFormFields`,
+  );
+}
+
+/**
+ * Handles updating document generation form fields with dynamic data.
+ */
+async function handleDocGenUpdateFormFields(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+  const documentId = ctx.getNodeParameter('documentId', itemIndex) as string;
+  const formFieldsData = ctx.getNodeParameter('formFields', itemIndex, {}) as IDataObject;
+
+  validateField('Envelope ID', envelopeId, 'uuid');
+  validateField('Document ID', documentId, 'required');
+
+  const docGenFormFieldList: IDataObject[] = [];
+  if (formFieldsData.field) {
+    const fields = formFieldsData.field as IDataObject[];
+    for (const f of fields) {
+      validateField('Field Name', f.name as string, 'required');
+      docGenFormFieldList.push({
+        name: f.name as string,
+        value: (f.value as string) || '',
+      });
+    }
+  }
+
+  return await docuSignApiRequest.call(
+    ctx,
+    'PUT',
+    `/envelopes/${envelopeId}/docGenFormFields`,
+    {
+      docGenFormFields: [
+        {
+          documentId,
+          docGenFormFieldList,
+        },
+      ],
+    },
+  );
+}
+
+// ============================================================================
+// Signing Group Handlers
+// ============================================================================
+
+/**
+ * Handles creating a signing group.
+ * DocuSign uses batch API — wraps single group in array.
+ */
+async function handleSigningGroupCreate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const groupName = ctx.getNodeParameter('groupName', itemIndex) as string;
+  const membersData = ctx.getNodeParameter('members', itemIndex, {}) as IDataObject;
+
+  validateField('Group Name', groupName, 'required');
+
+  const users: IDataObject[] = [];
+  if (membersData.member) {
+    const members = membersData.member as IDataObject[];
+    for (const m of members) {
+      validateField('Member Email', m.email as string, 'email');
+      validateField('Member Name', m.name as string, 'required');
+      users.push({
+        email: m.email as string,
+        userName: m.name as string,
+      });
+    }
+  }
+
+  const response = await docuSignApiRequest.call(ctx, 'POST', '/signing_groups', {
+    groups: [
+      {
+        groupName,
+        groupType: 'sharedSigningGroup',
+        users,
+      },
+    ],
+  });
+
+  const groups = (response.groups as IDataObject[]) || [];
+  return groups[0] || response;
+}
+
+/**
+ * Handles getting a signing group.
+ */
+async function handleSigningGroupGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signingGroupId = ctx.getNodeParameter('signingGroupId', itemIndex) as string;
+
+  validateField('Signing Group ID', signingGroupId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'GET', `/signing_groups/${signingGroupId}`);
+}
+
+/**
+ * Handles getting all signing groups.
+ */
+async function handleSigningGroupGetAll(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject[]> {
+  const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
+
+  if (returnAll) {
+    return await docuSignApiRequestAllItems.call(ctx, 'GET', '/signing_groups', 'groups', {});
+  }
+
+  const limit = ctx.getNodeParameter('limit', itemIndex);
+  const response = await docuSignApiRequest.call(ctx, 'GET', '/signing_groups', undefined, {
+    count: limit,
+  });
+  return (response.groups as IDataObject[]) || [];
+}
+
+/**
+ * Handles updating a signing group.
+ * DocuSign uses batch API — wraps single group in array.
+ */
+async function handleSigningGroupUpdate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signingGroupId = ctx.getNodeParameter('signingGroupId', itemIndex) as string;
+  const updateFields = ctx.getNodeParameter('updateFields', itemIndex, {});
+
+  validateField('Signing Group ID', signingGroupId, 'uuid');
+
+  const group: IDataObject = { signingGroupId };
+
+  if (updateFields.groupName) {
+    group.groupName = updateFields.groupName;
+  }
+
+  if (updateFields.members) {
+    const membersData = updateFields.members as IDataObject;
+    if (membersData.member) {
+      const members = membersData.member as IDataObject[];
+      const users: IDataObject[] = [];
+      for (const m of members) {
+        validateField('Member Email', m.email as string, 'email');
+        validateField('Member Name', m.name as string, 'required');
+        users.push({
+          email: m.email as string,
+          userName: m.name as string,
+        });
+      }
+      group.users = users;
+    }
+  }
+
+  if (!updateFields.groupName && !updateFields.members) {
+    throw new Error('At least one update field (group name or members) is required');
+  }
+
+  const response = await docuSignApiRequest.call(ctx, 'PUT', '/signing_groups', {
+    groups: [group],
+  });
+
+  const groups = (response.groups as IDataObject[]) || [];
+  return groups[0] || response;
+}
+
+/**
+ * Handles deleting a signing group.
+ * DocuSign uses batch API — wraps single group in array.
+ */
+async function handleSigningGroupDelete(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signingGroupId = ctx.getNodeParameter('signingGroupId', itemIndex) as string;
+
+  validateField('Signing Group ID', signingGroupId, 'uuid');
+
+  return await docuSignApiRequest.call(ctx, 'DELETE', '/signing_groups', {
+    groups: [{ signingGroupId }],
+  });
+}
+
+// ============================================================================
+// Brand Handlers
+// ============================================================================
+
+/**
+ * Handles creating a brand.
+ */
+async function handleBrandCreate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const brandName = ctx.getNodeParameter('brandName', itemIndex) as string;
+  const additionalOptions = ctx.getNodeParameter('additionalOptions', itemIndex, {}) as IDataObject;
+
+  validateField('Brand Name', brandName, 'required');
+
+  const brand: IDataObject = { brandName };
+
+  if (additionalOptions.brandCompany) {
+    brand.brandCompany = additionalOptions.brandCompany;
+  }
+  if (additionalOptions.defaultBrandLanguage) {
+    brand.defaultBrandLanguage = additionalOptions.defaultBrandLanguage;
+  }
+  if (additionalOptions.isOverridingCompanyName !== undefined) {
+    brand.isOverridingCompanyName = additionalOptions.isOverridingCompanyName ? 'true' : 'false';
+  }
+
+  const response = await docuSignApiRequest.call(ctx, 'POST', '/brands', {
+    brands: [brand],
+  });
+
+  const brands = (response.brands as IDataObject[]) || [];
+  return brands[0] || response;
+}
+
+/**
+ * Handles getting a brand.
+ */
+async function handleBrandGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const brandId = ctx.getNodeParameter('brandId', itemIndex) as string;
+
+  validateField('Brand ID', brandId, 'required');
+
+  return await docuSignApiRequest.call(ctx, 'GET', `/brands/${brandId}`);
+}
+
+/**
+ * Handles getting all brands.
+ */
+async function handleBrandGetAll(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject[]> {
+  const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
+
+  if (returnAll) {
+    return await docuSignApiRequestAllItems.call(ctx, 'GET', '/brands', 'brands', {});
+  }
+
+  const limit = ctx.getNodeParameter('limit', itemIndex);
+  const response = await docuSignApiRequest.call(ctx, 'GET', '/brands', undefined, {
+    count: limit,
+  });
+  return (response.brands as IDataObject[]) || [];
+}
+
+/**
+ * Handles updating a brand.
+ */
+async function handleBrandUpdate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const brandId = ctx.getNodeParameter('brandId', itemIndex) as string;
+  const updateFields = ctx.getNodeParameter('updateFields', itemIndex, {});
+
+  validateField('Brand ID', brandId, 'required');
+
+  if (!updateFields.brandName && !updateFields.brandCompany && updateFields.isOverridingCompanyName === undefined) {
+    throw new Error('At least one update field is required');
+  }
+
+  const body: IDataObject = {};
+  if (updateFields.brandName) {
+    body.brandName = updateFields.brandName;
+  }
+  if (updateFields.brandCompany) {
+    body.brandCompany = updateFields.brandCompany;
+  }
+  if (updateFields.isOverridingCompanyName !== undefined) {
+    body.isOverridingCompanyName = updateFields.isOverridingCompanyName ? 'true' : 'false';
+  }
+
+  return await docuSignApiRequest.call(ctx, 'PUT', `/brands/${brandId}`, body);
+}
+
+/**
+ * Handles deleting a brand.
+ */
+async function handleBrandDelete(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const brandId = ctx.getNodeParameter('brandId', itemIndex) as string;
+
+  validateField('Brand ID', brandId, 'required');
+
+  return await docuSignApiRequest.call(ctx, 'DELETE', '/brands', {
+    brands: [{ brandId }],
+  });
+}
+
+// ============================================================================
 // Main Node Class
 // ============================================================================
 
@@ -1466,6 +1915,134 @@ export class DocuSign implements INodeType {
 
             case 'search':
               responseData = await handleFolderSearch(this, i);
+              break;
+
+            default:
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
+          }
+        }
+
+        // ==========================================================================
+        // Envelope Lock Resource
+        // ==========================================================================
+        else if (resource === 'envelopeLock') {
+          switch (operation) {
+            case 'create':
+              responseData = await handleEnvelopeLockCreate(this, i);
+              break;
+
+            case 'get':
+              responseData = await handleEnvelopeLockGet(this, i);
+              break;
+
+            case 'update':
+              responseData = await handleEnvelopeLockUpdate(this, i);
+              break;
+
+            case 'delete':
+              responseData = await handleEnvelopeLockDelete(this, i);
+              break;
+
+            default:
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
+          }
+        }
+
+        // ==========================================================================
+        // Document Generation Resource
+        // ==========================================================================
+        else if (resource === 'documentGeneration') {
+          switch (operation) {
+            case 'getFormFields':
+              responseData = await handleDocGenGetFormFields(this, i);
+              break;
+
+            case 'updateFormFields':
+              responseData = await handleDocGenUpdateFormFields(this, i);
+              break;
+
+            default:
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
+          }
+        }
+
+        // ==========================================================================
+        // Signing Group Resource
+        // ==========================================================================
+        else if (resource === 'signingGroup') {
+          switch (operation) {
+            case 'create':
+              responseData = await handleSigningGroupCreate(this, i);
+              break;
+
+            case 'get':
+              responseData = await handleSigningGroupGet(this, i);
+              break;
+
+            case 'getAll':
+              responseData = await handleSigningGroupGetAll(this, i);
+              break;
+
+            case 'update':
+              responseData = await handleSigningGroupUpdate(this, i);
+              break;
+
+            case 'delete':
+              responseData = await handleSigningGroupDelete(this, i);
+              break;
+
+            default:
+              throw new NodeApiError(
+                this.getNode(),
+                {},
+                {
+                  message: `Unknown operation: ${operation}`,
+                },
+              );
+          }
+        }
+
+        // ==========================================================================
+        // Brand Resource
+        // ==========================================================================
+        else if (resource === 'brand') {
+          switch (operation) {
+            case 'create':
+              responseData = await handleBrandCreate(this, i);
+              break;
+
+            case 'get':
+              responseData = await handleBrandGet(this, i);
+              break;
+
+            case 'getAll':
+              responseData = await handleBrandGetAll(this, i);
+              break;
+
+            case 'update':
+              responseData = await handleBrandUpdate(this, i);
+              break;
+
+            case 'delete':
+              responseData = await handleBrandDelete(this, i);
               break;
 
             default:

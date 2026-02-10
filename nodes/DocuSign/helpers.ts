@@ -487,6 +487,7 @@ export async function docuSignApiRequest(
   body?: IDataObject,
   qs: Record<string, string | number> = {},
   timeout: number = DEFAULT_REQUEST_TIMEOUT_MS,
+  headers: Record<string, string> = {},
 ): Promise<IDataObject> {
   const credentials = await this.getCredentials('docuSignApi');
   const environment = credentials.environment as string;
@@ -504,6 +505,7 @@ export async function docuSignApiRequest(
     body?: IDataObject;
     json: boolean;
     timeout: number;
+    headers?: Record<string, string>;
   } = {
     method,
     url,
@@ -511,6 +513,10 @@ export async function docuSignApiRequest(
     json: true,
     timeout,
   };
+
+  if (Object.keys(headers).length > 0) {
+    options.headers = headers;
+  }
 
   if (body && Object.keys(body).length > 0) {
     options.body = body;

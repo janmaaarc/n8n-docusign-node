@@ -18,10 +18,15 @@ An [n8n](https://n8n.io/) community node for [DocuSign](https://www.docusign.com
 - **Recipient Authentication** - Access code, phone, or SMS verification before signing
 - **Envelope Correction** - Fix sent envelopes without voiding via correction URL
 - **Custom Fields** - Add metadata fields to envelopes for tracking and reporting
+- **SMS Delivery** - Send signing notifications via SMS in addition to email
 - **Template CRUD** - Create, get, update, and delete templates with documents and roles
 - **Bulk Send** - Send envelopes to 100+ recipients via bulk send lists
 - **PowerForms** - Create self-service signing links from templates
 - **Folder Management** - List folders, get items, move envelopes, and search across system folders
+- **Signing Groups** - Shared signing where any group member can sign on behalf of the group
+- **Brand Management** - Custom branding for envelopes and signing experience
+- **Document Generation** - Populate Word templates with dynamic data (DocGen)
+- **Envelope Lock Management** - Prevent concurrent editing of envelopes
 - **Webhook Trigger** - Real-time event notifications via DocuSign Connect
 - **Regional Support** - NA, EU, AU, and CA regions for production environments
 - **Rate Limiting** - Built-in retry logic with exponential backoff
@@ -96,6 +101,10 @@ The main node for interacting with the DocuSign eSignature API.
 | **Bulk Send** | Create List, Get List, Get Many Lists, Delete List, Send, Get Batch Status |
 | **PowerForm** | Create, Get, Get Many, Delete |
 | **Folder** | Get Many, Get Items, Move Envelope, Search |
+| **Signing Group** | Create, Get, Get Many, Update, Delete |
+| **Brand** | Create, Get, Get Many, Update, Delete |
+| **Document Generation** | Get Form Fields, Update Form Fields |
+| **Envelope Lock** | Lock, Get Lock, Update Lock, Unlock |
 
 #### Envelope Create Options
 
@@ -110,6 +119,7 @@ The main node for interacting with the DocuSign eSignature API.
 | **Anchor Tags** | Position signature fields using text anchors |
 | **Reminders** | Automatic reminder emails with configurable delay and frequency |
 | **Expiration** | Set envelope expiration with warning period |
+| **SMS Delivery** | Send signing notifications via SMS in addition to email |
 | **Signer Authentication** | Access code, phone, or SMS verification before signing |
 | **Allow Markup** | Let signers add comments and annotations |
 | **Allow Reassign** | Let signers reassign to another person |
@@ -434,6 +444,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [n8n Community Nodes Documentation](https://docs.n8n.io/integrations/community-nodes/)
 
 ## Changelog
+
+### v0.8.0
+
+**Advanced Features:**
+- **Signing Groups** - Create and manage shared signing groups with member CRUD
+- **Brand Management** - Custom branding profiles for envelopes (create, get, update, delete)
+- **Document Generation** - Populate Word template form fields with dynamic data (DocGen)
+- **Envelope Lock Management** - Lock/unlock envelopes to prevent concurrent editing
+- **SMS Delivery** - Send signing notifications via SMS with country code and phone number
+- Test coverage to 96.5% (320 tests), DocuSign.node.ts at 99.76%
 
 ### v0.7.0
 

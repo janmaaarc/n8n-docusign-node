@@ -91,6 +91,10 @@ export const RESOURCE_ENDPOINTS: Record<string, string> = {
   bulkSend: 'bulk_send_lists',
   powerForm: 'powerforms',
   folder: 'folders',
+  signingGroup: 'signing_groups',
+  brand: 'brands',
+  envelopeLock: 'lock',
+  documentGeneration: 'docGenFormFields',
 };
 
 /**
@@ -103,6 +107,9 @@ export const RESOURCE_ID_PARAMS: Record<string, string> = {
   bulkSend: 'listId',
   powerForm: 'powerFormId',
   folder: 'folderId',
+  signingGroup: 'signingGroupId',
+  brand: 'brandId',
+  envelopeLock: 'envelopeId',
 };
 
 /**
@@ -135,4 +142,11 @@ export const TAB_TYPES = [
   { name: 'Date Signed', value: 'dateSignedTabs', description: 'Auto-populated date field' },
   { name: 'Text', value: 'textTabs', description: 'Free-text input field' },
   { name: 'Checkbox', value: 'checkboxTabs', description: 'Checkbox field' },
+];
+
+/**
+ * Envelope lock types
+ */
+export const LOCK_TYPES = [
+  { name: 'Edit', value: 'edit', description: 'Lock for editing' },
 ];

@@ -4,6 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 0.8.x   | :white_check_mark: |
 | 0.7.x   | :white_check_mark: |
 | 0.6.x   | :white_check_mark: |
 | 0.5.x   | :white_check_mark: |
@@ -90,6 +91,15 @@ This node implements several security measures:
    - Use production only for live workflows
 
 ## Security Changelog
+
+### v0.8.0
+- Envelope lock token validation for lock update/unlock operations
+- Signing group member email validation
+- Brand ID validation for get/update/delete operations
+- Document generation form field validation
+- SMS phone number validation for delivery notifications
+- Custom `X-DocuSign-Edit` header support for secure lock operations
+- Maintained all existing security features
 
 ### v0.7.0
 - Bulk send recipient email validation before list creation

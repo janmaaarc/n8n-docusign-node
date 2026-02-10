@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-02-08
+
+### Added
+- **Signing Groups** - Shared signing where any group member can sign on behalf of the group
+  - Create - Create signing groups with named members
+  - Get / Get Many - Retrieve signing group details
+  - Update - Modify group name or members
+  - Delete - Remove signing groups
+- **Brand Management** - Custom branding for envelopes and signing experience
+  - Create - Create brand profiles with company name and language
+  - Get / Get Many - Retrieve brand details
+  - Update - Modify brand name and properties
+  - Delete - Remove brands
+- **Document Generation** - Populate Word templates with dynamic data (DocGen)
+  - Get Form Fields - Retrieve available form fields from draft envelopes
+  - Update Form Fields - Populate form fields with values before sending
+- **Envelope Lock Management** - Prevent concurrent editing of envelopes
+  - Lock - Lock an envelope for editing with configurable duration
+  - Get Lock - Check current lock status
+  - Update Lock - Extend or modify an existing lock
+  - Unlock - Release an envelope lock
+- **SMS Delivery** - Send signing notifications via SMS in addition to email
+  - Configure country code and phone number per signer in envelope create
+
+### Changed
+- **Test Coverage to 96.5%** - Added 53 new tests (320 total), DocuSign.node.ts at 99.76%
+- Added optional `headers` parameter to `docuSignApiRequest` for custom header support
+
+---
+
 ## [0.7.0] - 2026-02-08
 
 ### Added

@@ -811,6 +811,41 @@ export const envelopeFields: INodeProperties[] = [
           },
         ],
       },
+      {
+        displayName: 'SMS Delivery',
+        name: 'smsDelivery',
+        type: 'fixedCollection',
+        default: {},
+        description:
+          'Send signing notification via SMS in addition to email. Requires SMS delivery to be enabled in your DocuSign account.',
+        options: [
+          {
+            name: 'sms',
+            displayName: 'SMS Settings',
+            values: [
+              {
+                displayName: 'Country Code',
+                name: 'countryCode',
+                type: 'string',
+                default: '1',
+                placeholder: '1',
+                description:
+                  'Numeric country code (e.g., 1 for US/Canada, 44 for UK). Do not include + symbol.',
+              },
+              {
+                displayName: 'Phone Number',
+                name: 'phoneNumber',
+                type: 'string',
+                default: '',
+                required: true,
+                placeholder: '5551234567',
+                description:
+                  'Phone number without country code. For US/Canada, omit leading 0 or 1.',
+              },
+            ],
+          },
+        ],
+      },
     ],
   },
 

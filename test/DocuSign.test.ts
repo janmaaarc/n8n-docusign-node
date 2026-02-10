@@ -28,6 +28,7 @@ import {
   DEFAULT_SIGNATURE_X,
   DEFAULT_SIGNATURE_Y,
   SEARCH_FOLDER_IDS,
+  LOCK_TYPES,
 } from '../nodes/DocuSign/constants';
 
 // ============================================================================
@@ -757,7 +758,7 @@ describe('Resource Index', () => {
   it('should export allOperations', async () => {
     const { allOperations } = await import('../nodes/DocuSign/resources');
     expect(allOperations).toBeDefined();
-    expect(allOperations.length).toBe(5);
+    expect(allOperations.length).toBe(9);
   });
 
   it('should export allFields', async () => {
@@ -3584,9 +3585,9 @@ describe('Phase 3: Resource Index updates', () => {
     expect(values).toContain('template');
   });
 
-  it('should have 5 operation sets in allOperations', async () => {
+  it('should have 9 operation sets in allOperations', async () => {
     const { allOperations } = await import('../nodes/DocuSign/resources');
-    expect(allOperations).toHaveLength(5);
+    expect(allOperations).toHaveLength(9);
   });
 
   it('should have allFields with entries from all resources', async () => {
@@ -4532,6 +4533,1039 @@ describe('Phase 3 Execute: Folder', () => {
 
   describe('Folder: error handling', () => {
     it('should throw for unknown folder operation', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({ operation: 'unknownOp' });
+      await expect(node.execute.call(ctx as never)).rejects.toThrow();
+    });
+  });
+});
+
+// ============================================================================
+// Phase 4 Constants Tests
+// ============================================================================
+
+describe('Phase 4 Constants', () => {
+  it('should have LOCK_TYPES constant', () => {
+    expect(LOCK_TYPES).toBeDefined();
+    expect(LOCK_TYPES).toHaveLength(1);
+    expect(LOCK_TYPES[0].value).toBe('edit');
+  });
+
+  it('should have Phase 4 RESOURCE_ENDPOINTS', () => {
+    expect(RESOURCE_ENDPOINTS.signingGroup).toBe('signing_groups');
+    expect(RESOURCE_ENDPOINTS.brand).toBe('brands');
+    expect(RESOURCE_ENDPOINTS.envelopeLock).toBe('lock');
+    expect(RESOURCE_ENDPOINTS.documentGeneration).toBe('docGenFormFields');
+  });
+});
+
+// ============================================================================
+// Phase 4 Resource Definition Tests
+// ============================================================================
+
+describe('Phase 4 Resource Definitions', () => {
+  it('should export envelopeLock operations and fields', async () => {
+    const { envelopeLockOperations, envelopeLockFields } = await import(
+      '../nodes/DocuSign/resources/envelopeLock'
+    );
+    expect(envelopeLockOperations).toBeDefined();
+    expect(envelopeLockOperations.options).toHaveLength(4);
+    expect(envelopeLockFields).toBeDefined();
+    expect(envelopeLockFields.length).toBeGreaterThan(0);
+  });
+
+  it('should export documentGeneration operations and fields', async () => {
+    const { documentGenerationOperations, documentGenerationFields } = await import(
+      '../nodes/DocuSign/resources/documentGeneration'
+    );
+    expect(documentGenerationOperations).toBeDefined();
+    expect(documentGenerationOperations.options).toHaveLength(2);
+    expect(documentGenerationFields).toBeDefined();
+    expect(documentGenerationFields.length).toBeGreaterThan(0);
+  });
+
+  it('should export signingGroup operations and fields', async () => {
+    const { signingGroupOperations, signingGroupFields } = await import(
+      '../nodes/DocuSign/resources/signingGroup'
+    );
+    expect(signingGroupOperations).toBeDefined();
+    expect(signingGroupOperations.options).toHaveLength(5);
+    expect(signingGroupFields).toBeDefined();
+    expect(signingGroupFields.length).toBeGreaterThan(0);
+  });
+
+  it('should export brand operations and fields', async () => {
+    const { brandOperations, brandFields } = await import('../nodes/DocuSign/resources/brand');
+    expect(brandOperations).toBeDefined();
+    expect(brandOperations.options).toHaveLength(5);
+    expect(brandFields).toBeDefined();
+    expect(brandFields.length).toBeGreaterThan(0);
+  });
+
+  it('should have 9 resources in resourceProperty', async () => {
+    const { resourceProperty } = await import('../nodes/DocuSign/resources');
+    expect(resourceProperty.options).toHaveLength(9);
+    const values = (resourceProperty.options as Array<{ value: string }>).map((o) => o.value);
+    expect(values).toContain('brand');
+    expect(values).toContain('documentGeneration');
+    expect(values).toContain('envelopeLock');
+    expect(values).toContain('signingGroup');
+  });
+});
+
+// ============================================================================
+// Phase 4 Execute: SMS Delivery
+// ============================================================================
+
+describe('Phase 4 Execute: SMS Delivery', () => {
+  const VALID_UUID = '12345678-1234-1234-1234-123456789abc';
+
+  const createCtx = (overrides: {
+    operation: string;
+    params?: Record<string, unknown>;
+    items?: Array<{ json: Record<string, unknown>; binary?: Record<string, { data: string }> }>;
+    apiResponse?: unknown;
+  }) => {
+    const params = overrides.params || {};
+    const items = overrides.items || [{ json: {} }];
+    return {
+      getInputData: () => items,
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'envelope',
+          operation: overrides.operation,
+          envelopeId: VALID_UUID,
+          emailSubject: 'Test Subject',
+          signerEmail: 'signer@example.com',
+          signerName: 'Test Signer',
+          document: 'SGVsbG8gV29ybGQ=',
+          documentName: 'test.pdf',
+          sendImmediately: true,
+          additionalOptions: {},
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          overrides.apiResponse || { envelopeId: VALID_UUID },
+        returnJsonArray: (data: unknown) =>
+          Array.isArray(data) ? data.map((item: unknown) => ({ json: item })) : [{ json: data }],
+        constructExecutionMetaData: (items: unknown[]) => items,
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  it('should create envelope with SMS delivery', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createCtx({
+      operation: 'create',
+      params: {
+        additionalOptions: {
+          smsDelivery: {
+            sms: {
+              countryCode: '1',
+              phoneNumber: '5551234567',
+            },
+          },
+        },
+      },
+      apiResponse: { envelopeId: VALID_UUID, status: 'sent' },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+    expect(result[0][0].json.envelopeId).toBe(VALID_UUID);
+  });
+
+  it('should create envelope with SMS delivery as array format', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createCtx({
+      operation: 'create',
+      params: {
+        additionalOptions: {
+          smsDelivery: {
+            sms: [
+              {
+                countryCode: '44',
+                phoneNumber: '7700900123',
+              },
+            ],
+          },
+        },
+      },
+      apiResponse: { envelopeId: VALID_UUID },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should create envelope without SMS when not specified', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createCtx({
+      operation: 'create',
+      params: { additionalOptions: {} },
+      apiResponse: { envelopeId: VALID_UUID },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should skip SMS when sms data has no phone number', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createCtx({
+      operation: 'create',
+      params: {
+        additionalOptions: {
+          smsDelivery: {
+            sms: { countryCode: '1', phoneNumber: '' },
+          },
+        },
+      },
+      apiResponse: { envelopeId: VALID_UUID },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+
+  it('should use default country code when not specified', async () => {
+    const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+    const node = new DocuSign();
+
+    const ctx = createCtx({
+      operation: 'create',
+      params: {
+        additionalOptions: {
+          smsDelivery: {
+            sms: { phoneNumber: '5551234567' },
+          },
+        },
+      },
+      apiResponse: { envelopeId: VALID_UUID },
+    });
+
+    const result = await node.execute.call(ctx as never);
+    expect(result[0]).toHaveLength(1);
+  });
+});
+
+// ============================================================================
+// Phase 4 Execute: Envelope Lock
+// ============================================================================
+
+describe('Phase 4 Execute: Envelope Lock', () => {
+  const VALID_UUID = '12345678-1234-1234-1234-123456789abc';
+
+  const createCtx = (overrides: {
+    operation: string;
+    params?: Record<string, unknown>;
+    apiResponse?: unknown;
+  }) => {
+    const params = overrides.params || {};
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'envelopeLock',
+          operation: overrides.operation,
+          envelopeId: VALID_UUID,
+          lockDurationInSeconds: 300,
+          lockedByApp: 'n8n',
+          lockToken: 'test-lock-token-123',
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          overrides.apiResponse || {
+            lockToken: 'test-lock-token-123',
+            lockType: 'edit',
+            lockedByApp: 'n8n',
+          },
+        returnJsonArray: (data: unknown) =>
+          Array.isArray(data) ? data.map((item: unknown) => ({ json: item })) : [{ json: data }],
+        constructExecutionMetaData: (items: unknown[]) => items,
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  describe('EnvelopeLock: create', () => {
+    it('should lock an envelope', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        apiResponse: {
+          lockToken: 'lock-token-abc',
+          lockType: 'edit',
+          lockedByApp: 'n8n',
+          lockDurationInSeconds: '300',
+        },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0][0].json.lockToken).toBe('lock-token-abc');
+    });
+
+    it('should throw for invalid envelope ID', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: { envelopeId: 'invalid-id' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('valid UUID');
+    });
+  });
+
+  describe('EnvelopeLock: get', () => {
+    it('should get lock information', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'get',
+        apiResponse: { lockToken: 'lock-abc', lockedByApp: 'n8n', expiresIn: '240' },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0][0].json.lockToken).toBe('lock-abc');
+    });
+  });
+
+  describe('EnvelopeLock: update', () => {
+    it('should update a lock with token', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'update',
+        params: { lockToken: 'my-lock-token', lockDurationInSeconds: 600 },
+        apiResponse: { lockToken: 'my-lock-token', lockDurationInSeconds: '600' },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should throw when lock token is missing', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'update',
+        params: { lockToken: '' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('Lock Token is required');
+    });
+  });
+
+  describe('EnvelopeLock: delete (unlock)', () => {
+    it('should unlock an envelope', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'delete',
+        params: { lockToken: 'unlock-token' },
+        apiResponse: { success: true },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should throw when lock token is missing for unlock', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'delete',
+        params: { lockToken: '' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('Lock Token is required');
+    });
+  });
+
+  describe('EnvelopeLock: error handling', () => {
+    it('should throw for unknown operation', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({ operation: 'unknownOp' });
+      await expect(node.execute.call(ctx as never)).rejects.toThrow();
+    });
+  });
+});
+
+// ============================================================================
+// Phase 4 Execute: Document Generation
+// ============================================================================
+
+describe('Phase 4 Execute: Document Generation', () => {
+  const VALID_UUID = '12345678-1234-1234-1234-123456789abc';
+
+  const createCtx = (overrides: {
+    operation: string;
+    params?: Record<string, unknown>;
+    apiResponse?: unknown;
+  }) => {
+    const params = overrides.params || {};
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'documentGeneration',
+          operation: overrides.operation,
+          envelopeId: VALID_UUID,
+          documentId: '1',
+          formFields: {},
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          overrides.apiResponse || { docGenFormFields: [] },
+        returnJsonArray: (data: unknown) =>
+          Array.isArray(data) ? data.map((item: unknown) => ({ json: item })) : [{ json: data }],
+        constructExecutionMetaData: (items: unknown[]) => items,
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  describe('DocGen: getFormFields', () => {
+    it('should get form fields from a draft envelope', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'getFormFields',
+        apiResponse: {
+          docGenFormFields: [
+            { name: 'FirstName', value: '', type: 'text' },
+            { name: 'Company', value: '', type: 'text' },
+          ],
+        },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should throw for invalid envelope ID', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'getFormFields',
+        params: { envelopeId: 'bad-id' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('valid UUID');
+    });
+  });
+
+  describe('DocGen: updateFormFields', () => {
+    it('should update form fields with dynamic data', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'updateFormFields',
+        params: {
+          documentId: '1',
+          formFields: {
+            field: [
+              { name: 'FirstName', value: 'John' },
+              { name: 'Company', value: 'Acme Inc' },
+            ],
+          },
+        },
+        apiResponse: { docGenFormFields: [{ documentId: '1' }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should handle empty form fields gracefully', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'updateFormFields',
+        params: { formFields: {} },
+        apiResponse: { docGenFormFields: [] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should throw when document ID is missing', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'updateFormFields',
+        params: { documentId: '' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('Document ID is required');
+    });
+
+    it('should validate field name is required', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'updateFormFields',
+        params: {
+          formFields: {
+            field: [{ name: '', value: 'John' }],
+          },
+        },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('Field Name is required');
+    });
+  });
+
+  describe('DocGen: error handling', () => {
+    it('should throw for unknown operation', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({ operation: 'unknownOp' });
+      await expect(node.execute.call(ctx as never)).rejects.toThrow();
+    });
+  });
+});
+
+// ============================================================================
+// Phase 4 Execute: Signing Group
+// ============================================================================
+
+describe('Phase 4 Execute: Signing Group', () => {
+  const VALID_UUID = '12345678-1234-1234-1234-123456789abc';
+
+  const createCtx = (overrides: {
+    operation: string;
+    params?: Record<string, unknown>;
+    apiResponse?: unknown;
+  }) => {
+    const params = overrides.params || {};
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'signingGroup',
+          operation: overrides.operation,
+          signingGroupId: VALID_UUID,
+          groupName: 'Test Group',
+          members: {},
+          returnAll: false,
+          limit: 50,
+          updateFields: {},
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          overrides.apiResponse || { groups: [{ signingGroupId: VALID_UUID }] },
+        returnJsonArray: (data: unknown) =>
+          Array.isArray(data) ? data.map((item: unknown) => ({ json: item })) : [{ json: data }],
+        constructExecutionMetaData: (items: unknown[]) => items,
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  describe('SigningGroup: create', () => {
+    it('should create a signing group with members', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: {
+          groupName: 'Legal Team',
+          members: {
+            member: [
+              { email: 'alice@example.com', name: 'Alice' },
+              { email: 'bob@example.com', name: 'Bob' },
+            ],
+          },
+        },
+        apiResponse: { groups: [{ signingGroupId: VALID_UUID, groupName: 'Legal Team' }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0][0].json.groupName).toBe('Legal Team');
+    });
+
+    it('should create a signing group with no members', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: { groupName: 'Empty Group', members: {} },
+        apiResponse: { groups: [{ signingGroupId: VALID_UUID }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should throw for missing group name', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: { groupName: '' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('Group Name is required');
+    });
+
+    it('should validate member emails', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: {
+          members: { member: [{ email: 'invalid-email', name: 'Bad' }] },
+        },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('valid email');
+    });
+  });
+
+  describe('SigningGroup: get', () => {
+    it('should get a signing group', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'get',
+        apiResponse: { signingGroupId: VALID_UUID, groupName: 'My Group' },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0][0].json.signingGroupId).toBe(VALID_UUID);
+    });
+
+    it('should throw for invalid signing group ID', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'get',
+        params: { signingGroupId: 'not-a-uuid' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('valid UUID');
+    });
+  });
+
+  describe('SigningGroup: getAll', () => {
+    it('should get all signing groups with limit', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'getAll',
+        params: { returnAll: false, limit: 10 },
+        apiResponse: { groups: [{ signingGroupId: VALID_UUID }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should get all signing groups with returnAll', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'getAll',
+        params: { returnAll: true },
+        apiResponse: {
+          groups: [{ signingGroupId: VALID_UUID }],
+          totalSetSize: '1',
+          endPosition: '0',
+        },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0].length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('SigningGroup: update', () => {
+    it('should update a signing group name', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'update',
+        params: { updateFields: { groupName: 'Updated Group' } },
+        apiResponse: { groups: [{ signingGroupId: VALID_UUID, groupName: 'Updated Group' }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should update signing group members', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'update',
+        params: {
+          updateFields: {
+            members: {
+              member: [{ email: 'new@example.com', name: 'New Member' }],
+            },
+          },
+        },
+        apiResponse: { groups: [{ signingGroupId: VALID_UUID }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should throw when no update fields provided', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'update',
+        params: { updateFields: {} },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('At least one update field');
+    });
+  });
+
+  describe('SigningGroup: delete', () => {
+    it('should delete a signing group', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'delete',
+        apiResponse: { groups: [{ signingGroupId: VALID_UUID }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+  });
+
+  describe('SigningGroup: error handling', () => {
+    it('should throw for unknown operation', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({ operation: 'unknownOp' });
+      await expect(node.execute.call(ctx as never)).rejects.toThrow();
+    });
+  });
+});
+
+// ============================================================================
+// Phase 4 Execute: Brand
+// ============================================================================
+
+describe('Phase 4 Execute: Brand', () => {
+  const createCtx = (overrides: {
+    operation: string;
+    params?: Record<string, unknown>;
+    apiResponse?: unknown;
+  }) => {
+    const params = overrides.params || {};
+    return {
+      getInputData: () => [{ json: {} }],
+      getNodeParameter: (name: string, _index: number, defaultValue?: unknown) => {
+        const paramMap: Record<string, unknown> = {
+          resource: 'brand',
+          operation: overrides.operation,
+          brandId: 'brand-123',
+          brandName: 'Test Brand',
+          additionalOptions: {},
+          returnAll: false,
+          limit: 50,
+          updateFields: {},
+          ...params,
+        };
+        return paramMap[name] ?? defaultValue;
+      },
+      getCredentials: async () => ({
+        environment: 'demo',
+        accountId: 'test-account-id',
+        region: 'na',
+      }),
+      helpers: {
+        httpRequestWithAuthentication: async () =>
+          overrides.apiResponse || { brands: [{ brandId: 'brand-123' }] },
+        returnJsonArray: (data: unknown) =>
+          Array.isArray(data) ? data.map((item: unknown) => ({ json: item })) : [{ json: data }],
+        constructExecutionMetaData: (items: unknown[]) => items,
+      },
+      getNode: () => ({ name: 'DocuSign' }),
+      continueOnFail: () => false,
+    };
+  };
+
+  describe('Brand: create', () => {
+    it('should create a brand', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: {
+          brandName: 'My Brand',
+          additionalOptions: { brandCompany: 'Acme Inc' },
+        },
+        apiResponse: { brands: [{ brandId: 'brand-abc', brandName: 'My Brand' }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0][0].json.brandName).toBe('My Brand');
+    });
+
+    it('should create brand with all options', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: {
+          brandName: 'Full Brand',
+          additionalOptions: {
+            brandCompany: 'Corp',
+            defaultBrandLanguage: 'fr',
+            isOverridingCompanyName: true,
+          },
+        },
+        apiResponse: { brands: [{ brandId: 'brand-full' }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should throw for missing brand name', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: { brandName: '' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('Brand Name is required');
+    });
+
+    it('should return response when brands array is empty', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'create',
+        params: { brandName: 'Test' },
+        apiResponse: { brands: [] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+  });
+
+  describe('Brand: get', () => {
+    it('should get a brand', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'get',
+        apiResponse: { brandId: 'brand-123', brandName: 'My Brand' },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0][0].json.brandId).toBe('brand-123');
+    });
+
+    it('should throw for missing brand ID', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'get',
+        params: { brandId: '' },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('Brand ID is required');
+    });
+  });
+
+  describe('Brand: getAll', () => {
+    it('should get all brands with limit', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'getAll',
+        params: { returnAll: false, limit: 10 },
+        apiResponse: { brands: [{ brandId: 'b1' }, { brandId: 'b2' }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(2);
+    });
+
+    it('should get all brands with returnAll', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'getAll',
+        params: { returnAll: true },
+        apiResponse: {
+          brands: [{ brandId: 'b1' }],
+          totalSetSize: '1',
+          endPosition: '0',
+        },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0].length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('Brand: update', () => {
+    it('should update a brand name', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'update',
+        params: { updateFields: { brandName: 'New Name' } },
+        apiResponse: { brandId: 'brand-123', brandName: 'New Name' },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should update brand company', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'update',
+        params: {
+          updateFields: { brandCompany: 'New Corp', isOverridingCompanyName: true },
+        },
+        apiResponse: { brandId: 'brand-123' },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+
+    it('should throw when no update fields provided', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'update',
+        params: { updateFields: {} },
+      });
+
+      await expect(node.execute.call(ctx as never)).rejects.toThrow('At least one update field');
+    });
+  });
+
+  describe('Brand: delete', () => {
+    it('should delete a brand', async () => {
+      const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
+      const node = new DocuSign();
+
+      const ctx = createCtx({
+        operation: 'delete',
+        apiResponse: { brands: [{ brandId: 'brand-123' }] },
+      });
+
+      const result = await node.execute.call(ctx as never);
+      expect(result[0]).toHaveLength(1);
+    });
+  });
+
+  describe('Brand: error handling', () => {
+    it('should throw for unknown operation', async () => {
       const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
       const node = new DocuSign();
 

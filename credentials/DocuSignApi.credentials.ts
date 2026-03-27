@@ -1,5 +1,6 @@
 import type {
   ICredentialDataDecryptedObject,
+  ICredentialTestRequest,
   ICredentialType,
   IHttpRequestOptions,
   INodeProperties,
@@ -58,6 +59,13 @@ export class DocuSignApi implements ICredentialType {
   displayName = 'DocuSign API';
   icon = 'file:docusign.svg' as const;
   documentationUrl = 'https://developers.docusign.com/docs/esign-rest-api/';
+  test: ICredentialTestRequest = {
+    request: {
+      baseURL: '={{$credentials.environment === "demo" ? "https://demo.docusign.net/restapi/v2.1" : "https://" + ($credentials.region || "na1") + ".docusign.net/restapi/v2.1"}}',
+      url: '=/accounts/{{$credentials.accountId}}',
+    },
+  };
+
   properties: INodeProperties[] = [
     {
       displayName: 'Environment',

@@ -64,6 +64,16 @@ An [n8n](https://n8n.io/) community node for [DocuSign](https://www.docusign.com
 - **Diagnostics** - Manage API request logging for troubleshooting
 - **Notary** - Remote online notarization profile and jurisdiction management
 - **Trust Service Providers** - List EU eIDAS electronic seal providers
+- **Envelope Purge** - Purge document content from completed envelopes (GDPR)
+- **Account Settings** - Get and update account-level configuration
+- **Template Views** - Generate edit URLs for templates
+- **Reporting** - Account reports and permission profiles
+- **Account Signatures** - Manage stamp and signature images
+- **Account Watermarks** - Configure document watermarks
+- **Captive Recipients** - Manage embedded recipient sessions
+- **Consumer Disclosures** - ESIGN Act disclosure management
+- **Notary Journals** - View notary journal entries
+- **Template Bulk Recipients** - CSV-based bulk recipient upload
 - **Webhook Trigger** - Real-time event notifications via DocuSign Connect
 - **Regional Support** - NA, EU, AU, and CA regions for production environments
 - **Rate Limiting** - Built-in retry logic with exponential backoff
@@ -176,6 +186,16 @@ The main node for interacting with the DocuSign eSignature API.
 | **Diagnostics** | Get Settings, Update Settings, Get Log |
 | **Notary** | Get, Get Jurisdictions, Create |
 | **Trust Service Provider** | Get Seal Providers |
+| **Envelope Purge** | Purge Documents |
+| **Account Settings** | Get, Update |
+| **Template View** | Create Edit View |
+| **Reporting** | Get Product Permission Profiles, Get Account Report |
+| **Account Signature** | Create, Get, Get Many, Update, Delete |
+| **Account Watermark** | Get, Update, Preview |
+| **Captive Recipient** | Create, Delete |
+| **Consumer Disclosure** | Get, Get Default, Update |
+| **Notary Journal** | Get, Get Many |
+| **Template Bulk Recipient** | Upload, Get, Delete |
 
 #### Envelope Create Options
 
@@ -615,6 +635,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [n8n Community Nodes Documentation](https://docs.n8n.io/integrations/community-nodes/)
 
 ## Changelog
+
+### v1.0.0
+
+**Production-Ready Release:**
+- **10 New Resources** - Envelope Purge, Account Settings, Template Views, Reporting, Account Signatures, Account Watermarks, Captive Recipients, Consumer Disclosures, Notary Journals, Template Bulk Recipients
+- **Binary File Downloads** - Template document downloads return actual file content
+- **OAuth2 Authentication** - Authorization Code Grant as alternative to JWT
+- **Credential Test** - Validate credentials from the n8n UI
+- **Webhook Enhancements** - Filter by envelope ID/sender, 5 new events
+- 604 total tests, 53 resource definitions, ~190 operations
 
 ### v0.11.0
 

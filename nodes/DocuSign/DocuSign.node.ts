@@ -536,13 +536,15 @@ async function handleEnvelopeDownloadDocument(
     validateField('Document ID', documentId, 'uuid');
   }
 
-  const credentials = await ctx.getCredentials('docuSignApi');
+  const authType = ctx.getNodeParameter('authentication', 0, 'jwt') as string;
+  const credentialName = authType === 'oauth2' ? 'docuSignOAuth2Api' : 'docuSignApi';
+  const credentials = await ctx.getCredentials(credentialName);
   const environment = credentials.environment as string;
   const region = (credentials.region as string) || 'na';
   const accountId = credentials.accountId as string;
   const baseUrl = getBaseUrl(environment, region);
 
-  const response = (await ctx.helpers.httpRequestWithAuthentication.call(ctx, 'docuSignApi', {
+  const response = (await ctx.helpers.httpRequestWithAuthentication.call(ctx, credentialName, {
     method: 'GET',
     url: `${baseUrl}/accounts/${accountId}/envelopes/${envelopeId}/documents/${documentId}`,
     encoding: 'arraybuffer',
@@ -3541,7 +3543,29 @@ async function handleTemplateDocumentGet(
   const documentId = ctx.getNodeParameter('documentId', itemIndex) as string;
   validateField('Template ID', templateId, 'uuid');
   validateField('Document ID', documentId, 'required');
-  return await docuSignApiRequest.call(ctx, 'GET', `/templates/${templateId}/documents/${documentId}`);
+
+  const authType = ctx.getNodeParameter('authentication', 0, 'jwt') as string;
+  const credentialName = authType === 'oauth2' ? 'docuSignOAuth2Api' : 'docuSignApi';
+  const credentials = await ctx.getCredentials(credentialName);
+  const environment = credentials.environment as string;
+  const region = (credentials.region as string) || 'na';
+  const accountId = credentials.accountId as string;
+  const baseUrl = getBaseUrl(environment, region);
+
+  const response = (await ctx.helpers.httpRequestWithAuthentication.call(ctx, credentialName, {
+    method: 'GET',
+    url: `${baseUrl}/accounts/${accountId}/templates/${templateId}/documents/${documentId}`,
+    encoding: 'arraybuffer',
+    returnFullResponse: true,
+  })) as { body: Buffer };
+
+  const binaryData: IBinaryData = await ctx.helpers.prepareBinaryData(
+    Buffer.from(response.body),
+    `template_${templateId}_doc_${documentId}.pdf`,
+    'application/pdf',
+  );
+
+  return { binary: binaryData, templateId, documentId } as unknown as IDataObject;
 }
 
 async function handleTemplateDocumentGetAll(
@@ -4062,6 +4086,335 @@ async function handleTrustServiceProviderGetSealProviders(
 ): Promise<IDataObject> {
   return await docuSignApiRequest.call(ctx, 'GET', '/trust_service_providers/seal/providers');
 }
+
+// ============================================================================
+// Envelope Purge Handler
+// ============================================================================
+
+async function handleEnvelopePurge(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+  const purgeState = ctx.getNodeParameter('purgeState', itemIndex) as string;
+  validateField('Envelope ID', envelopeId, 'uuid');
+  validateField('Purge State', purgeState, 'required');
+  return await docuSignApiRequest.call(ctx, 'PUT', `/envelopes/${envelopeId}`, { purgeState });
+}
+
+// ============================================================================
+// Account Settings Handlers
+// ============================================================================
+
+async function handleAccountSettingsGet(
+  ctx: IExecuteFunctions,
+): Promise<IDataObject> {
+  return await docuSignApiRequest.call(ctx, 'GET', '/settings');
+}
+
+async function handleAccountSettingsUpdate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const settingsJson = ctx.getNodeParameter('settingsJson', itemIndex) as string;
+  validateField('Settings JSON', settingsJson, 'required');
+  let settings: IDataObject;
+  try {
+    settings = JSON.parse(settingsJson) as IDataObject;
+  } catch {
+    throw new Error('Invalid JSON in settings');
+  }
+  return await docuSignApiRequest.call(ctx, 'PUT', '/settings', { accountSettings: settings });
+}
+
+// ============================================================================
+// Template Views Handler
+// ============================================================================
+
+async function handleTemplateViewCreateEditView(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const templateId = ctx.getNodeParameter('templateId', itemIndex) as string;
+  const returnUrl = ctx.getNodeParameter('returnUrl', itemIndex) as string;
+  validateField('Template ID', templateId, 'uuid');
+  validateField('Return URL', returnUrl, 'httpsUrl');
+  return await docuSignApiRequest.call(ctx, 'POST', `/templates/${templateId}/views/edit`, { returnUrl });
+}
+
+// ============================================================================
+// Reporting Handlers
+// ============================================================================
+
+async function handleReportingGetProductPermissionProfiles(
+  ctx: IExecuteFunctions,
+): Promise<IDataObject> {
+  return await docuSignApiRequest.call(ctx, 'GET', '/reports/product_permission_profiles');
+}
+
+async function handleReportingGetReportInAccount(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const startDate = ctx.getNodeParameter('startDate', itemIndex, '') as string;
+  const endDate = ctx.getNodeParameter('endDate', itemIndex, '') as string;
+  const qs: Record<string, string | number> = {};
+  if (startDate) {
+    validateField('Start Date', startDate, 'date');
+    qs.start_date = startDate;
+  }
+  if (endDate) {
+    validateField('End Date', endDate, 'date');
+    qs.end_date = endDate;
+  }
+  return await docuSignApiRequest.call(ctx, 'GET', '/reports', undefined, qs);
+}
+
+// ============================================================================
+// Account Signature Handlers
+// ============================================================================
+
+async function handleAccountSignatureCreate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signatureName = ctx.getNodeParameter('signatureName', itemIndex) as string;
+  const signatureInitials = ctx.getNodeParameter('signatureInitials', itemIndex, '') as string;
+  validateField('Signature Name', signatureName, 'required');
+  const body: IDataObject = { signatureName };
+  if (signatureInitials) {
+    body.signatureInitials = signatureInitials;
+  }
+  return await docuSignApiRequest.call(ctx, 'POST', '/signatures', { userSignatures: [body] });
+}
+
+async function handleAccountSignatureGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signatureId = ctx.getNodeParameter('signatureId', itemIndex) as string;
+  validateField('Signature ID', signatureId, 'required');
+  return await docuSignApiRequest.call(ctx, 'GET', `/signatures/${signatureId}`);
+}
+
+async function handleAccountSignatureGetAll(
+  ctx: IExecuteFunctions,
+): Promise<IDataObject> {
+  return await docuSignApiRequest.call(ctx, 'GET', '/signatures');
+}
+
+async function handleAccountSignatureUpdate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signatureId = ctx.getNodeParameter('signatureId', itemIndex) as string;
+  const updateFields = ctx.getNodeParameter('updateFields', itemIndex, {});
+  validateField('Signature ID', signatureId, 'required');
+  if (!updateFields || Object.keys(updateFields).length === 0) {
+    throw new Error('At least one update field is required');
+  }
+  const body: IDataObject = {};
+  if (updateFields.signatureName) {
+    body.signatureName = updateFields.signatureName;
+  }
+  if (updateFields.signatureInitials) {
+    body.signatureInitials = updateFields.signatureInitials;
+  }
+  return await docuSignApiRequest.call(ctx, 'PUT', `/signatures/${signatureId}`, body);
+}
+
+async function handleAccountSignatureDelete(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signatureId = ctx.getNodeParameter('signatureId', itemIndex) as string;
+  validateField('Signature ID', signatureId, 'required');
+  return await docuSignApiRequest.call(ctx, 'DELETE', `/signatures/${signatureId}`);
+}
+
+// ============================================================================
+// Account Watermark Handlers
+// ============================================================================
+
+function buildWatermarkBody(ctx: IExecuteFunctions, itemIndex: number): IDataObject {
+  const enabled = ctx.getNodeParameter('enabled', itemIndex, true) as boolean;
+  const watermarkText = ctx.getNodeParameter('watermarkText', itemIndex, 'DRAFT') as string;
+  const font = ctx.getNodeParameter('font', itemIndex, 'Arial') as string;
+  const fontSize = ctx.getNodeParameter('fontSize', itemIndex, '48') as string;
+  const fontColor = ctx.getNodeParameter('fontColor', itemIndex, '#999999') as string;
+  return { enabled: enabled ? 'true' : 'false', watermarkText, font, fontSize, fontColor };
+}
+
+async function handleAccountWatermarkGet(
+  ctx: IExecuteFunctions,
+): Promise<IDataObject> {
+  return await docuSignApiRequest.call(ctx, 'GET', '/watermark');
+}
+
+async function handleAccountWatermarkUpdate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const body: IDataObject = buildWatermarkBody(ctx, itemIndex);
+  return await docuSignApiRequest.call(ctx, 'PUT', '/watermark', body);
+}
+
+async function handleAccountWatermarkPreview(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const body: IDataObject = buildWatermarkBody(ctx, itemIndex);
+  return await docuSignApiRequest.call(ctx, 'PUT', '/watermark/preview', body);
+}
+
+// ============================================================================
+// Captive Recipient Handlers
+// ============================================================================
+
+async function handleCaptiveRecipientCreate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signerEmail = ctx.getNodeParameter('signerEmail', itemIndex) as string;
+  const signerName = ctx.getNodeParameter('signerName', itemIndex) as string;
+  const clientUserId = ctx.getNodeParameter('clientUserId', itemIndex) as string;
+  validateField('Signer Email', signerEmail, 'email');
+  validateField('Signer Name', signerName, 'required');
+  validateField('Client User ID', clientUserId, 'required');
+  return await docuSignApiRequest.call(ctx, 'POST', '/captive_recipients/signature', {
+    signers: [{ email: signerEmail, userName: signerName, clientUserId }],
+  });
+}
+
+async function handleCaptiveRecipientDelete(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const signerEmail = ctx.getNodeParameter('signerEmail', itemIndex) as string;
+  validateField('Signer Email', signerEmail, 'email');
+  return await docuSignApiRequest.call(ctx, 'DELETE', '/captive_recipients/signature', {
+    signers: [{ email: signerEmail }],
+  });
+}
+
+// ============================================================================
+// Consumer Disclosure Handlers
+// ============================================================================
+
+async function handleConsumerDisclosureGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const envelopeId = ctx.getNodeParameter('envelopeId', itemIndex) as string;
+  const recipientId = ctx.getNodeParameter('recipientId', itemIndex) as string;
+  const langCode = ctx.getNodeParameter('langCode', itemIndex, 'en') as string;
+  validateField('Envelope ID', envelopeId, 'uuid');
+  validateField('Recipient ID', recipientId, 'required');
+  return await docuSignApiRequest.call(ctx, 'GET', `/envelopes/${envelopeId}/recipients/${recipientId}/consumer_disclosure/${encodeURIComponent(langCode)}`);
+}
+
+async function handleConsumerDisclosureGetDefault(
+  ctx: IExecuteFunctions,
+): Promise<IDataObject> {
+  return await docuSignApiRequest.call(ctx, 'GET', '/consumer_disclosure');
+}
+
+async function handleConsumerDisclosureUpdate(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const langCode = ctx.getNodeParameter('langCode', itemIndex, 'en') as string;
+  const esignAgreement = ctx.getNodeParameter('esignAgreement', itemIndex, '') as string;
+  const companyName = ctx.getNodeParameter('companyName', itemIndex, '') as string;
+  const body: IDataObject = {};
+  if (esignAgreement) {
+    body.esignAgreement = esignAgreement;
+  }
+  if (companyName) {
+    body.companyName = companyName;
+  }
+  return await docuSignApiRequest.call(ctx, 'PUT', `/consumer_disclosure/${encodeURIComponent(langCode)}`, body);
+}
+
+// ============================================================================
+// Notary Journal Handlers
+// ============================================================================
+
+async function handleNotaryJournalGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const journalId = ctx.getNodeParameter('journalId', itemIndex) as string;
+  validateField('Journal ID', journalId, 'required');
+  return await docuSignApiRequest.call(ctx, 'GET', `/notary/journals/${journalId}`);
+}
+
+async function handleNotaryJournalGetAll(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const returnAll = ctx.getNodeParameter('returnAll', itemIndex, false) as boolean;
+  if (returnAll) {
+    return await docuSignApiRequestAllItems.call(ctx, 'GET', '/notary/journals', 'notaryJournals') as unknown as IDataObject;
+  }
+  const limit = ctx.getNodeParameter('limit', itemIndex, 50);
+  return await docuSignApiRequest.call(ctx, 'GET', '/notary/journals', undefined, { count: limit });
+}
+
+// ============================================================================
+// Template Bulk Recipient Handlers
+// ============================================================================
+
+async function handleTemplateBulkRecipientUpload(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const templateId = ctx.getNodeParameter('templateId', itemIndex) as string;
+  const recipientId = ctx.getNodeParameter('recipientId', itemIndex) as string;
+  const csvContent = ctx.getNodeParameter('csvContent', itemIndex) as string;
+  validateField('Template ID', templateId, 'uuid');
+  validateField('Recipient ID', recipientId, 'required');
+  validateField('CSV Content', csvContent, 'required');
+
+  const authType = ctx.getNodeParameter('authentication', 0, 'jwt') as string;
+  const credentialName = authType === 'oauth2' ? 'docuSignOAuth2Api' : 'docuSignApi';
+  const credentials = await ctx.getCredentials(credentialName);
+  const environment = credentials.environment as string;
+  const region = (credentials.region as string) || 'na';
+  const accountId = credentials.accountId as string;
+  const baseUrl = getBaseUrl(environment, region);
+
+  return (await ctx.helpers.httpRequestWithAuthentication.call(ctx, credentialName, {
+    method: 'PUT',
+    url: `${baseUrl}/accounts/${accountId}/templates/${templateId}/recipients/${recipientId}/bulk_recipients`,
+    body: csvContent,
+    headers: { 'Content-Type': 'text/csv' },
+  })) as IDataObject;
+}
+
+async function handleTemplateBulkRecipientGet(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const templateId = ctx.getNodeParameter('templateId', itemIndex) as string;
+  const recipientId = ctx.getNodeParameter('recipientId', itemIndex) as string;
+  validateField('Template ID', templateId, 'uuid');
+  validateField('Recipient ID', recipientId, 'required');
+  return await docuSignApiRequest.call(ctx, 'GET', `/templates/${templateId}/recipients/${recipientId}/bulk_recipients`);
+}
+
+async function handleTemplateBulkRecipientDelete(
+  ctx: IExecuteFunctions,
+  itemIndex: number,
+): Promise<IDataObject> {
+  const templateId = ctx.getNodeParameter('templateId', itemIndex) as string;
+  const recipientId = ctx.getNodeParameter('recipientId', itemIndex) as string;
+  validateField('Template ID', templateId, 'uuid');
+  validateField('Recipient ID', recipientId, 'required');
+  return await docuSignApiRequest.call(ctx, 'DELETE', `/templates/${templateId}/recipients/${recipientId}/bulk_recipients`);
+}
+
+
 // Main Node Class
 // ============================================================================
 
@@ -4083,9 +4436,37 @@ export class DocuSign implements INodeType {
       {
         name: 'docuSignApi',
         required: true,
+        displayOptions: {
+          show: {
+            authentication: ['jwt'],
+          },
+        },
+      },
+      {
+        name: 'docuSignOAuth2Api',
+        required: true,
+        displayOptions: {
+          show: {
+            authentication: ['oauth2'],
+          },
+        },
       },
     ],
-    properties: [resourceProperty, ...allOperations, ...allFields],
+    properties: [
+      {
+        displayName: 'Authentication',
+        name: 'authentication',
+        type: 'options',
+        options: [
+          { name: 'JWT (Service Integration)', value: 'jwt' },
+          { name: 'OAuth2 (User Authorization)', value: 'oauth2' },
+        ],
+        default: 'jwt',
+      },
+      resourceProperty,
+      ...allOperations,
+      ...allFields,
+    ],
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -4990,9 +5371,20 @@ export class DocuSign implements INodeType {
           }
         } else if (resource === 'templateDocument') {
           switch (operation) {
-            case 'get':
-              responseData = await handleTemplateDocumentGet(this, i);
+            case 'get': {
+              const result = await handleTemplateDocumentGet(this, i);
+              const binaryResult = result as unknown as { binary: IBinaryData; templateId: string; documentId: string };
+              if (binaryResult.binary) {
+                returnData.push({
+                  json: { templateId: binaryResult.templateId, documentId: binaryResult.documentId, success: true },
+                  binary: { data: binaryResult.binary },
+                  pairedItem: { item: i },
+                });
+                continue;
+              }
+              responseData = result;
               break;
+            }
             case 'getAll':
               responseData = await handleTemplateDocumentGetAll(this, i);
               break;
@@ -5157,6 +5549,129 @@ export class DocuSign implements INodeType {
             default:
               throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
           }
+        } else if (resource === 'envelopePurge') {
+          switch (operation) {
+            case 'purgeDocuments':
+              responseData = await handleEnvelopePurge(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'accountSettings') {
+          switch (operation) {
+            case 'get':
+              responseData = await handleAccountSettingsGet(this);
+              break;
+            case 'update':
+              responseData = await handleAccountSettingsUpdate(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'templateView') {
+          switch (operation) {
+            case 'createEditView':
+              responseData = await handleTemplateViewCreateEditView(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'reporting') {
+          switch (operation) {
+            case 'getProductPermissionProfiles':
+              responseData = await handleReportingGetProductPermissionProfiles(this);
+              break;
+            case 'getReportInAccount':
+              responseData = await handleReportingGetReportInAccount(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'accountSignature') {
+          switch (operation) {
+            case 'create':
+              responseData = await handleAccountSignatureCreate(this, i);
+              break;
+            case 'get':
+              responseData = await handleAccountSignatureGet(this, i);
+              break;
+            case 'getAll':
+              responseData = await handleAccountSignatureGetAll(this);
+              break;
+            case 'update':
+              responseData = await handleAccountSignatureUpdate(this, i);
+              break;
+            case 'delete':
+              responseData = await handleAccountSignatureDelete(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'accountWatermark') {
+          switch (operation) {
+            case 'get':
+              responseData = await handleAccountWatermarkGet(this);
+              break;
+            case 'update':
+              responseData = await handleAccountWatermarkUpdate(this, i);
+              break;
+            case 'preview':
+              responseData = await handleAccountWatermarkPreview(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'captiveRecipient') {
+          switch (operation) {
+            case 'create':
+              responseData = await handleCaptiveRecipientCreate(this, i);
+              break;
+            case 'delete':
+              responseData = await handleCaptiveRecipientDelete(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'consumerDisclosure') {
+          switch (operation) {
+            case 'get':
+              responseData = await handleConsumerDisclosureGet(this, i);
+              break;
+            case 'getDefault':
+              responseData = await handleConsumerDisclosureGetDefault(this);
+              break;
+            case 'update':
+              responseData = await handleConsumerDisclosureUpdate(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'notaryJournal') {
+          switch (operation) {
+            case 'get':
+              responseData = await handleNotaryJournalGet(this, i);
+              break;
+            case 'getAll':
+              responseData = await handleNotaryJournalGetAll(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+        } else if (resource === 'templateBulkRecipient') {
+          switch (operation) {
+            case 'upload':
+              responseData = await handleTemplateBulkRecipientUpload(this, i);
+              break;
+            case 'get':
+              responseData = await handleTemplateBulkRecipientGet(this, i);
+              break;
+            case 'delete':
+              responseData = await handleTemplateBulkRecipientDelete(this, i);
+              break;
+            default:
+              throw new NodeApiError(this.getNode(), {}, { message: `Unknown operation: ${operation}` });
+          }
+
         } else {
           throw new NodeApiError(
             this.getNode(),

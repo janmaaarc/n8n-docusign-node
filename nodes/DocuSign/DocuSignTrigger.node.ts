@@ -76,6 +76,31 @@ const WEBHOOK_EVENTS = [
     value: 'template-deleted',
     description: 'Triggered when a template is deleted',
   },
+  {
+    name: 'Envelope Resent',
+    value: 'envelope-resent',
+    description: 'Triggered when an envelope is resent to recipients',
+  },
+  {
+    name: 'Envelope Corrected',
+    value: 'envelope-corrected',
+    description: 'Triggered when an envelope is corrected',
+  },
+  {
+    name: 'Envelope Purge',
+    value: 'envelope-purge',
+    description: 'Triggered when an envelope is purged',
+  },
+  {
+    name: 'Recipient Reassigned',
+    value: 'recipient-reassigned',
+    description: 'Triggered when a recipient is reassigned',
+  },
+  {
+    name: 'Recipient Finish Later',
+    value: 'recipient-finish-later',
+    description: 'Triggered when a recipient chooses to finish later',
+  },
 ];
 
 export class DocuSignTrigger implements INodeType {
@@ -96,6 +121,20 @@ export class DocuSignTrigger implements INodeType {
       {
         name: 'docuSignApi',
         required: true,
+        displayOptions: {
+          show: {
+            authentication: ['jwt'],
+          },
+        },
+      },
+      {
+        name: 'docuSignOAuth2Api',
+        required: true,
+        displayOptions: {
+          show: {
+            authentication: ['oauth2'],
+          },
+        },
       },
     ],
     webhooks: [
@@ -107,6 +146,16 @@ export class DocuSignTrigger implements INodeType {
       },
     ],
     properties: [
+      {
+        displayName: 'Authentication',
+        name: 'authentication',
+        type: 'options',
+        options: [
+          { name: 'JWT (Service Integration)', value: 'jwt' },
+          { name: 'OAuth2 (User Authorization)', value: 'oauth2' },
+        ],
+        default: 'jwt',
+      },
       {
         displayName: 'Events',
         name: 'events',
@@ -148,6 +197,27 @@ export class DocuSignTrigger implements INodeType {
 5. Select the events matching your selection here
 6. If verifying signatures, add an HMAC secret and save it in credentials`,
       },
+      {
+        displayName: 'Filter by Envelope ID',
+        name: 'filterByEnvelopeId',
+        type: 'string',
+        default: '',
+        description: 'Only trigger for this specific envelope ID (leave empty for all)',
+      },
+      {
+        displayName: 'Filter by Sender Email',
+        name: 'filterBySenderEmail',
+        type: 'string',
+        default: '',
+        description: 'Only trigger for envelopes from this sender email',
+      },
+      {
+        displayName: 'Include Raw Payload',
+        name: 'includeRawPayload',
+        type: 'boolean',
+        default: false,
+        description: 'Whether to include the raw webhook payload in the output',
+      },
     ],
   };
 
@@ -175,7 +245,9 @@ export class DocuSignTrigger implements INodeType {
       }
 
       try {
-        const credentials = await this.getCredentials('docuSignApi');
+        const authType = this.getNodeParameter('authentication', 'jwt') as string;
+        const credentialName = authType === 'oauth2' ? 'docuSignOAuth2Api' : 'docuSignApi';
+        const credentials = await this.getCredentials(credentialName);
         const webhookSecret = credentials.webhookSecret as string;
 
         if (!webhookSecret) {
@@ -250,6 +322,26 @@ export class DocuSignTrigger implements INodeType {
       };
     }
 
+    // Get filter parameters
+    const filterByEnvelopeId = this.getNodeParameter('filterByEnvelopeId', '') as string;
+    const filterBySenderEmail = this.getNodeParameter('filterBySenderEmail', '') as string;
+
+    // Apply envelope ID filter
+    if (filterByEnvelopeId) {
+      const envelopeId = (body.envelopeId || body.EnvelopeID || '') as string;
+      if (envelopeId !== filterByEnvelopeId) {
+        return {};
+      }
+    }
+
+    // Apply sender email filter
+    if (filterBySenderEmail) {
+      const senderEmail = (body.senderEmail || body.email || '') as string;
+      if (senderEmail.toLowerCase() !== filterBySenderEmail.toLowerCase()) {
+        return {};
+      }
+    }
+
     // Extract envelope data (reuse from replay protection if already extracted)
     const finalEnvelopeData = (body.data as IDataObject) || {};
     const finalEnvelopeSummary = (finalEnvelopeData.envelopeSummary ||
@@ -257,6 +349,9 @@ export class DocuSignTrigger implements INodeType {
 
     // Extract sender info with proper typing
     const sender = finalEnvelopeSummary.sender as IDataObject | undefined;
+
+    // Check if raw payload should be included
+    const includeRawPayload = this.getNodeParameter('includeRawPayload', false) as boolean;
 
     // Build output
     const output: IDataObject = {
@@ -269,8 +364,11 @@ export class DocuSignTrigger implements INodeType {
       senderName: sender?.userName,
       recipients: finalEnvelopeSummary.recipients,
       documents: finalEnvelopeSummary.documents,
-      rawPayload: body,
     };
+
+    if (includeRawPayload) {
+      output.rawPayload = body;
+    }
 
     return {
       workflowData: [

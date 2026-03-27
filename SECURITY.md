@@ -4,6 +4,7 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 1.0.x   | :white_check_mark: |
 | 0.11.x  | :white_check_mark: |
 | 0.10.x  | :white_check_mark: |
 | 0.9.x   | :white_check_mark: |
@@ -94,6 +95,17 @@ This node implements several security measures:
    - Use production only for live workflows
 
 ## Security Changelog
+
+### v1.0.0
+- Consumer disclosure langCode path injection protection (encodeURIComponent)
+- Cloud storage serviceId/folderId path injection protection (encodeURIComponent)
+- OAuth2 credential with webhookSecret field for trigger signature verification
+- Captive recipient email validation (RFC 5322)
+- Envelope purge envelope ID validation (UUID format)
+- Template view return URL validation (SSRF-safe HTTPS URL)
+- Template bulk recipient template ID validation (UUID format)
+- Account signature name validation (required, non-empty)
+- Maintained all existing security features
 
 ### v0.11.0
 - Envelope notification envelope ID validation (UUID format)

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-docusign-esign",
-  "version": "0.11.0",
+  "version": "1.0.0",
   "description": "n8n community node for DocuSign eSignature - send documents for signature and manage envelopes",
   "keywords": [
     "n8n-community-node-package",
@@ -43,7 +43,8 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/DocuSignApi.credentials.js"
+      "dist/credentials/DocuSignApi.credentials.js",
+      "dist/credentials/DocuSignOAuth2Api.credentials.js"
     ],
     "nodes": [
       "dist/nodes/DocuSign/DocuSign.node.js",

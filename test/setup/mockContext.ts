@@ -43,14 +43,18 @@ export function createMockExecuteContext(overrides: MockContextOverrides = {}) {
       region: 'na',
     }),
     helpers: {
-      httpRequestWithAuthentication: async () => {
+      httpRequestWithAuthentication: async (_cred: string, opts?: Record<string, unknown>) => {
         if (overrides.httpError) {
           throw overrides.httpError;
         }
-        if (overrides.apiResponses) {
-          return overrides.apiResponses[callCount++] || apiResponse;
+        const resp = overrides.apiResponses
+          ? overrides.apiResponses[callCount++] || apiResponse
+          : apiResponse;
+        // When returnFullResponse is set (binary downloads), wrap in { body: Buffer }
+        if (opts && opts.returnFullResponse) {
+          return { body: Buffer.from('mock-binary-content') };
         }
-        return apiResponse;
+        return resp;
       },
       returnJsonArray: (data: unknown) => {
         if (Array.isArray(data)) {

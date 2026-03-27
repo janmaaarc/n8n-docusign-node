@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-03-27
+
+### Added
+
+#### New Resources
+- **Envelope Purge** - Purge document content from completed envelopes (GDPR/data retention compliance)
+  - Purge Documents - Set purge state on completed envelopes
+- **Account Settings** - Manage account-level configuration
+  - Get - Retrieve all account settings
+  - Update - Modify account settings via JSON
+- **Template Views** - Generate template editing URLs
+  - Create Edit View - Generate URL for editing a template in the DocuSign UI
+- **Reporting** - Account reports and analytics
+  - Get Product Permission Profiles - Retrieve permission profiles report
+  - Get Account Report - Retrieve account reports with date filters
+- **Account Signatures** - Manage stamp and signature images
+  - Create / Get / Get Many / Update / Delete - Full CRUD for account signatures
+- **Account Watermarks** - Configure document watermarks
+  - Get / Update / Preview - Manage watermark text, font, and appearance
+- **Captive Recipients** - Manage embedded (captive) recipient sessions
+  - Create - Register embedded signers with client user IDs
+  - Delete - Remove captive recipient signatures
+- **Consumer Disclosures** - ESIGN Act compliance
+  - Get - Retrieve disclosure for specific envelope recipient
+  - Get Default - Retrieve account-level default disclosure
+  - Update - Modify account disclosure text
+- **Notary Journals** - Remote online notarization journal entries
+  - Get / Get Many - Retrieve notary journal entries with pagination
+- **Template Bulk Recipients** - CSV-based bulk recipient management
+  - Upload - Upload CSV file of bulk recipients for a template
+  - Get - Retrieve bulk recipient list
+  - Delete - Remove bulk recipients
+
+#### Enhancements
+- **Binary File Downloads** - Template document downloads now return actual file content as binary data (Buffer) instead of JSON metadata
+- **Credential Test** - Validate DocuSign credentials from the n8n credential editor UI
+- **OAuth2 Authentication** - Authorization Code Grant flow as alternative to JWT for user-level authorization
+  - New DocuSign OAuth2 API credential type
+  - Both nodes (DocuSign + DocuSign Trigger) support JWT and OAuth2
+- **Webhook Trigger Enhancements** - Advanced filtering and new events
+  - Filter by Envelope ID - Only trigger for specific envelopes
+  - Filter by Sender Email - Only trigger for specific senders
+  - Include Raw Payload option
+  - 5 new events: envelope-resent, envelope-corrected, envelope-purge, recipient-reassigned, recipient-finish-later
+
+### Changed
+- **604 Total Tests** - Added 52 new tests across 12 feature test files
+- Added 10 new resource definitions (43 → 53 total resources)
+- Added 24 new handler functions and 10 dispatch blocks
+- Added 8 new type definitions (types.ts)
+- Bumped version to 1.0.0 (production-ready)
+
+---
+
 ## [0.11.0] - 2026-03-01
 
 ### Added

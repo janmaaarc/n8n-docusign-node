@@ -719,3 +719,82 @@ export interface DocuSignTemplateLock {
   lockedByApp?: string;
   lockExpirationDateTime?: string;
 }
+
+/**
+ * Account settings
+ */
+export interface DocuSignAccountSettings {
+  accountSettings?: Record<string, string>;
+  [key: string]: unknown;
+}
+
+/**
+ * Account signature
+ */
+export interface DocuSignAccountSignature {
+  signatureId?: string;
+  signatureName?: string;
+  signatureInitials?: string;
+  imageType?: string;
+  stampFormat?: string;
+}
+
+/**
+ * Account watermark
+ */
+export interface DocuSignAccountWatermark {
+  enabled?: string;
+  watermarkText?: string;
+  font?: string;
+  fontSize?: string;
+  fontColor?: string;
+}
+
+/**
+ * Captive recipient
+ */
+export interface DocuSignCaptiveRecipient {
+  clientUserId?: string;
+  email?: string;
+  userName?: string;
+  errorDetails?: Record<string, string>;
+}
+
+/**
+ * Consumer disclosure
+ */
+export interface DocuSignConsumerDisclosure {
+  accountEsignId?: string;
+  allowCDWithdraw?: string;
+  companyName?: string;
+  esignAgreement?: string;
+}
+
+/**
+ * Notary journal entry
+ */
+export interface DocuSignNotaryJournal {
+  journalId?: string;
+  createdDate?: string;
+  documentName?: string;
+  signerName?: string;
+  notarizationType?: string;
+}
+
+/**
+ * Report
+ */
+export interface DocuSignReport {
+  reportId?: string;
+  reportType?: string;
+  reportDateRangeType?: string;
+}
+
+/**
+ * Template bulk recipient
+ */
+export interface DocuSignTemplateBulkRecipient {
+  bulkRecipientRow?: string;
+  email?: string;
+  name?: string;
+}

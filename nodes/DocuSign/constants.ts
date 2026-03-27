@@ -129,6 +129,16 @@ export const RESOURCE_ENDPOINTS: Record<string, string> = {
   templateDocument: 'documents',
   templateLock: 'lock',
   templateNotification: 'notification',
+  envelopePurge: 'envelopes',
+  accountSettings: 'settings',
+  templateView: 'templates',
+  reporting: 'reports',
+  accountSignature: 'signatures',
+  accountWatermark: 'watermark',
+  captiveRecipient: 'captive_recipients',
+  consumerDisclosure: 'consumer_disclosure',
+  notaryJournal: 'notary/journals',
+  templateBulkRecipient: 'templates',
 };
 
 /**
@@ -174,6 +184,16 @@ export const RESOURCE_ID_PARAMS: Record<string, string> = {
   templateDocument: 'templateId',
   templateLock: 'templateId',
   templateNotification: 'templateId',
+  envelopePurge: 'envelopeId',
+  accountSettings: '',
+  templateView: 'templateId',
+  reporting: '',
+  accountSignature: 'signatureId',
+  accountWatermark: '',
+  captiveRecipient: '',
+  consumerDisclosure: '',
+  notaryJournal: 'journalId',
+  templateBulkRecipient: 'templateId',
 };
 
 /**

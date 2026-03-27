@@ -489,7 +489,9 @@ export async function docuSignApiRequest(
   timeout: number = DEFAULT_REQUEST_TIMEOUT_MS,
   headers: Record<string, string> = {},
 ): Promise<IDataObject> {
-  const credentials = await this.getCredentials('docuSignApi');
+  const authType = this.getNodeParameter('authentication', 0, 'jwt') as string;
+  const credentialName = authType === 'oauth2' ? 'docuSignOAuth2Api' : 'docuSignApi';
+  const credentials = await this.getCredentials(credentialName);
   const environment = credentials.environment as string;
   const region = (credentials.region as string) || 'na';
   const accountId = credentials.accountId as string;
@@ -528,7 +530,7 @@ export async function docuSignApiRequest(
     try {
       return (await this.helpers.httpRequestWithAuthentication.call(
         this,
-        'docuSignApi',
+        credentialName,
         options,
       )) as IDataObject;
     } catch (error) {

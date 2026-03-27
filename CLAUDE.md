@@ -15,19 +15,24 @@ nodes/DocuSign/
 ├── helpers.ts                # API helpers, validation, retry logic
 ├── constants.ts              # API URLs, status codes, defaults
 ├── types.ts                  # TypeScript interfaces
-└── resources/                # UI field definitions by resource (43 resources)
+└── resources/                # UI field definitions by resource (53 resources)
     ├── accountCustomField.ts
     ├── accountGroup.ts
+    ├── accountSettings.ts
+    ├── accountSignature.ts
     ├── accountUser.ts
+    ├── accountWatermark.ts
     ├── billing.ts
     ├── brand.ts
     ├── bulkSend.ts
+    ├── captiveRecipient.ts
     ├── chunkedUpload.ts
     ├── cloudStorage.ts
     ├── comments.ts
     ├── compositeTemplate.ts
     ├── connectConfig.ts
     ├── connectEvent.ts
+    ├── consumerDisclosure.ts
     ├── contact.ts
     ├── customTab.ts
     ├── diagnostics.ts
@@ -40,46 +45,57 @@ nodes/DocuSign/
     ├── envelopeEmailSetting.ts
     ├── envelopeLock.ts
     ├── envelopeNotification.ts
+    ├── envelopePurge.ts
     ├── envelopeTransfer.ts
     ├── folder.ts
     ├── idVerification.ts
     ├── notary.ts
+    ├── notaryJournal.ts
     ├── paymentTab.ts
     ├── permissionProfile.ts
     ├── powerForm.ts
     ├── recipientTabs.ts
+    ├── reporting.ts
     ├── scheduledRouting.ts
     ├── signingGroup.ts
     ├── supplementalDoc.ts
     ├── template.ts
+    ├── templateBulkRecipient.ts
     ├── templateCustomField.ts
     ├── templateDocument.ts
     ├── templateLock.ts
     ├── templateNotification.ts
     ├── templateRecipients.ts
+    ├── templateView.ts
     ├── trustServiceProvider.ts
     ├── workspace.ts
     └── index.ts
 
 credentials/
-└── DocuSignApi.credentials.ts  # JWT authentication with token caching
+├── DocuSignApi.credentials.ts      # JWT authentication with token caching
+└── DocuSignOAuth2Api.credentials.ts # OAuth2 Authorization Code Grant
 
 test/
 ├── DocuSign.test.ts            # Core test file (320 tests)
 ├── setup/
 │   ├── mockContext.ts           # Shared mock context factory
 │   └── constants.ts             # Shared test constants
-└── features/                    # Feature-specific tests (182 tests)
+└── features/                    # Feature-specific tests (234 tests)
     ├── accountCustomField.test.ts
     ├── accountGroup.test.ts
+    ├── accountSettings.test.ts
+    ├── accountSignature.test.ts
     ├── accountUser.test.ts
+    ├── accountWatermark.test.ts
     ├── billing.test.ts
+    ├── captiveRecipient.test.ts
     ├── chunkedUpload.test.ts
     ├── cloudStorage.test.ts
     ├── comments.test.ts
     ├── compositeTemplate.test.ts
     ├── connectConfig.test.ts
     ├── connectEvent.test.ts
+    ├── consumerDisclosure.test.ts
     ├── contact.test.ts
     ├── customTab.test.ts
     ├── diagnostics.test.ts
@@ -89,22 +105,29 @@ test/
     ├── envelopeDocumentField.test.ts
     ├── envelopeEmailSetting.test.ts
     ├── envelopeNotification.test.ts
+    ├── envelopePurge.test.ts
     ├── envelopeTransfer.test.ts
     ├── envelopeViews.test.ts
     ├── idVerification.test.ts
     ├── notary.test.ts
+    ├── notaryJournal.test.ts
+    ├── oauth2Credential.test.ts
     ├── paymentTab.test.ts
     ├── permissionProfile.test.ts
     ├── powerFormData.test.ts
     ├── recipientTabs.test.ts
+    ├── reporting.test.ts
     ├── scheduledRouting.test.ts
     ├── supplementalDoc.test.ts
+    ├── templateBulkRecipient.test.ts
     ├── templateCustomField.test.ts
     ├── templateDocument.test.ts
     ├── templateLock.test.ts
     ├── templateNotification.test.ts
     ├── templateRecipients.test.ts
+    ├── templateView.test.ts
     ├── trustServiceProvider.test.ts
+    ├── webhookEnhancement.test.ts
     └── workspace.test.ts
 ```
 

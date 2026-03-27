@@ -462,9 +462,11 @@ describe('Node Description', () => {
   it('should require docuSignApi credentials', async () => {
     const { DocuSign } = await import('../nodes/DocuSign/DocuSign.node');
     const node = new DocuSign();
-    expect(node.description.credentials).toHaveLength(1);
+    expect(node.description.credentials).toHaveLength(2);
     expect(node.description.credentials?.[0].name).toBe('docuSignApi');
     expect(node.description.credentials?.[0].required).toBe(true);
+    expect(node.description.credentials?.[1].name).toBe('docuSignOAuth2Api');
+    expect(node.description.credentials?.[1].required).toBe(true);
   });
 
   it('should have properties defined', async () => {
@@ -543,9 +545,11 @@ describe('DocuSign Trigger Node', () => {
   it('should require docuSignApi credentials', async () => {
     const { DocuSignTrigger } = await import('../nodes/DocuSign/DocuSignTrigger.node');
     const node = new DocuSignTrigger();
-    expect(node.description.credentials).toHaveLength(1);
+    expect(node.description.credentials).toHaveLength(2);
     expect(node.description.credentials?.[0].name).toBe('docuSignApi');
     expect(node.description.credentials?.[0].required).toBe(true);
+    expect(node.description.credentials?.[1].name).toBe('docuSignOAuth2Api');
+    expect(node.description.credentials?.[1].required).toBe(true);
   });
 
   it('should have webhook configuration', async () => {
@@ -758,7 +762,7 @@ describe('Resource Index', () => {
   it('should export allOperations', async () => {
     const { allOperations } = await import('../nodes/DocuSign/resources');
     expect(allOperations).toBeDefined();
-    expect(allOperations.length).toBe(43);
+    expect(allOperations.length).toBe(53);
   });
 
   it('should export allFields', async () => {
@@ -1322,7 +1326,7 @@ describe('DocuSign Trigger Webhook Handler', () => {
       expect(output?.senderName).toBe('John Sender');
       expect(output?.recipients).toHaveLength(1);
       expect(output?.documents).toHaveLength(1);
-      expect(output?.rawPayload).toBeDefined();
+      // rawPayload only included when includeRawPayload is true (default false)
       expect(output?.timestamp).toBeDefined();
     });
 
@@ -3587,7 +3591,7 @@ describe('Phase 3: Resource Index updates', () => {
 
   it('should have 22 operation sets in allOperations', async () => {
     const { allOperations } = await import('../nodes/DocuSign/resources');
-    expect(allOperations).toHaveLength(43);
+    expect(allOperations).toHaveLength(53);
   });
 
   it('should have allFields with entries from all resources', async () => {
@@ -4606,7 +4610,7 @@ describe('Phase 4 Resource Definitions', () => {
 
   it('should have 22 resources in resourceProperty', async () => {
     const { resourceProperty } = await import('../nodes/DocuSign/resources');
-    expect(resourceProperty.options).toHaveLength(43);
+    expect(resourceProperty.options).toHaveLength(53);
     const values = (resourceProperty.options as Array<{ value: string }>).map((o) => o.value);
     expect(values).toContain('brand');
     expect(values).toContain('documentGeneration');
